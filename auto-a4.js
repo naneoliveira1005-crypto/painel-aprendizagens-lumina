@@ -59,7 +59,27 @@ function headerCorners(canvas,W,H,rgba){
  if(topSamples.length<8)return null;
  const line=fitLine(topSamples,1);
  if(!line||line.n<7||Math.abs(line.a)>.28)return null;
- const width=xR-xL,pageHeight=width*(841.8897637795277/595.2755905511812);
+ const width=xR-xL;
+ let pageHeight=width*(841.8897637795277/595.2755905511812);
+ const yHead=line.a*(xL+xR)/2+line.b;
+ // O rodapé fica próximo à última linha escrita do formulário.
+ // Usa conteúdo impresso para estimar o comprimento da folha mesmo sobre mesa branca.
+ let lastInk=-1;
+ for(let y=Math.max(4,Math.round(yHead+pageHeight*.90));
+         y<Math.min(H*.985,Math.round(yHead+pageHeight*1.5));y++){
+  let dark=0,available=0;
+  for(let x=Math.round(xL+width*.12);x<Math.round(xR-width*.10);x+=2){
+    const k=(y*W+x)*4;
+    const brightness=rgba[k]*.299+rgba[k+1]*.587+rgba[k+2]*.114;
+    if(brightness<155)dark++;
+    available++;
+  }
+  if(dark>=Math.max(6,available*.07)&&dark<available*.72)lastInk=y;
+ }
+ if(lastInk>yHead+pageHeight*.95){
+  pageHeight=clamp((lastInk-yHead)/.97,pageHeight*.85,pageHeight*1.45);
+ }
+
  const topLeft={x:xL,y:line.a*xL+line.b};
  const topRight={x:xR,y:line.a*xR+line.b};
  const driftX=-line.a*pageHeight;
