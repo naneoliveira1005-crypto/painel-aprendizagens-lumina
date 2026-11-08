@@ -66,7 +66,28 @@ function classes(d){
 function assessments(d){
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
  const studentRows=role==='director'?'<p class="intro-note">A direção tem acesso a informações institucionais; resultados individuais não são disponibilizados neste perfil.</p>': d.students.length?`<div class="tablewrap"><table><thead><tr><th>Estudante</th><th>Turma</th><th>Avaliações oficiais</th></tr></thead><tbody>${d.students.slice(0,50).map(s=>`<tr><td>${clean(s.display_name)}</td><td>${clean(d.classrooms.find(c=>c.id===s.classroom_id)?.label||'')}</td><td>${d.results.filter(r=>r.student_id===s.id).length}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Não existem estudantes e resultados oficiais liberados neste perfil. As sete fichas do piloto estão em validação e não aparecem aqui.</div>';
- return `<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div><div class="card"><h2>Acompanhamento individual autorizado</h2>${studentRows}</div>`;
+ return `<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div>
+ ${notice('<strong>Organização pedagógica do fechamento de 2026:</strong> os roteiros abaixo são referências de planejamento para Língua Portuguesa e Matemática. Não constituem lançamentos oficiais nem liberam novos formulários ou envios.','info')}
+ <div class="twocol">
+   <article class="card"><h2>Língua Portuguesa</h2><p>Instrumento de fechamento — 1º ao 5º ano, com complexidade ajustada à turma.</p><ul class="eyelist">
+   <li><span><strong>Escrita de palavras</strong><br><small>5 palavras de um mesmo campo semântico: 1 polissílaba, 1 trissílaba, 2 dissílabas e 1 monossílaba</small></span></li>
+   <li><span><strong>Escrita de uma frase</strong><br><small>Produção escrita para observar as hipóteses e relações entre fala e escrita</small></span></li>
+   <li><span><strong>Leitura</strong><br><small>Um texto de memória e um texto simples, observando a autonomia leitora</small></span></li>
+   <li><span><strong>Registro docente</strong><br><small>Marcação com X dos conhecimentos já demonstrados e dos que precisam de acompanhamento</small></span></li>
+   </ul></article>
+   <article class="card"><h2>Matemática</h2><p>Instrumento breve — 1º ao 5º ano, com gradação de complexidade.</p><ul class="eyelist">
+   <li><span>Contagem e quantificação</span></li>
+   <li><span>Leitura e escrita de números</span></li>
+   <li><span>Composição e decomposição no sistema decimal</span></li>
+   <li><span>Comparação e ordenação de quantidades e números</span></li>
+   <li><span>Problemas de adição e subtração</span></li>
+   <li><span>Noções de multiplicação e divisão nos anos pertinentes</span></li>
+   </ul></article>
+ </div>
+ <div class="card"><h2>Preparação para os registros</h2>
+ <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. A identificação dos estudantes e o vínculo de cada ficha ainda precisam ser preparados antes dos lançamentos reais.</p>
+ <p class="intro-note">Fluxo previsto: aplicação e marcação da ficha → envio protegido do arquivo → conferência pedagógica → validação → visualização consolidada. A etapa de envio e publicação ainda não está habilitada nesta versão.</p></div>
+ <div class="card"><h2>Acompanhamento individual autorizado</h2>${studentRows}</div>`;
 }
 function batches(d){
  const admin=role==='pedagogical_admin';
