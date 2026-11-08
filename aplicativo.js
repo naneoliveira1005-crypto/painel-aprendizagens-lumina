@@ -137,6 +137,23 @@ async function refreshLive(){
 }
 function enterDemo(){mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
 function exitDemo(){mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';}
+// A pessoa convidada configura sua própria senha após a confirmação do Supabase.
+const invitationFlow = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type');
+let changingPassword = invitationFlow === 'invite' || invitationFlow === 'recovery';
+function showAuthPanel(section){
+  $('loginForm').classList.toggle('hidden',section!=='login');
+  $('btnForgotPassword').classList.toggle('hidden',section!=='login');
+  $('passwordRecoveryForm').classList.toggle('hidden',section!=='recovery');
+  $('passwordSetupForm').classList.toggle('hidden',section!=='setup');
+  $('btnDemo').classList.toggle('hidden',section==='setup');
+}
+function showPasswordSetup(){
+  changingPassword=true;
+  $('loginView').classList.remove('hidden');
+  $('appView').classList.add('hidden');
+  $('btnLogout').classList.add('hidden');
+  showAuthPanel('setup');
+}
 function bind(){
  $('loginForm').addEventListener('submit',async(e)=>{e.preventDefault();const btn=$('btnLogin'),msg=$('loginMessage');btn.disabled=true;msg.textContent='Verificando credenciais...';try{
   if(!api)throw new Error('Serviço temporariamente indisponível. Abra este arquivo com conexão à internet.');
@@ -144,7 +161,50 @@ function bind(){
   const {error}=await api.auth.signInWithPassword({email,password});if(error)throw new Error('Não foi possível entrar. Confira seu e-mail, sua senha e a liberação do acesso.');
   $('password').value='';await enterLive();msg.textContent='';
  }catch(err){msg.textContent=err.message||'Erro ao entrar.'}finally{btn.disabled=false}});
- $('btnDemo').addEventListener('click',enterDemo);
+ $('btnForgotPassword').addEventListener('click',()=>{
+    $('recoveryEmail').value=$('email').value.trim();
+    $('recoveryMessage').textContent='';
+    showAuthPanel('recovery');
+  });
+  $('btnBackFromRecovery').addEventListener('click',()=>showAuthPanel('login'));
+  $('passwordRecoveryForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const btn=$('btnSendRecovery'),msg=$('recoveryMessage');
+    btn.disabled=true;msg.textContent='Enviando solicitação...';
+    try{
+      if(!api)throw new Error('Serviço indisponível. Confira sua internet.');
+      const email=$('recoveryEmail').value.trim();
+      const {error}=await api.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+      if(error)throw error;
+      msg.textContent='Se o e-mail estiver cadastrado, receberá instruções para redefinir a senha.';
+    }catch(e){msg.textContent='Não foi possível enviar o e-mail agora. Tente novamente.'}
+    finally{btn.disabled=false}
+  });
+  $('passwordSetupForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const btn=$('btnSavePassword'),msg=$('setupPasswordMessage');
+    const password=$('newPassword').value,confirm=$('newPasswordConfirm').value;
+    if(password.length<12||password!==confirm){msg.textContent='Use ao menos 12 caracteres e confirme a mesma senha.';return}
+    btn.disabled=true;msg.textContent='Salvando sua senha...';
+    try{
+      if(!api)throw new Error('Serviço indisponível.');
+      const {data:{user},error:userError}=await api.auth.getUser();
+      if(userError||!user)throw new Error('Este convite expirou. Solicite um novo acesso.');
+      const {error}=await api.auth.updateUser({password});
+      if(error)throw error;
+      $('newPassword').value='';$('newPasswordConfirm').value='';
+      changingPassword=false;
+      history.replaceState(null,'',location.pathname);
+      try{
+        await enterLive();
+      }catch(err){
+        showAuthPanel('login');
+        $('loginMessage').textContent='Senha criada. Seu perfil ainda aguarda autorização da coordenação. Entre novamente quando for liberado.';
+      }
+    }catch(err){msg.textContent=err.message||'Não foi possível salvar. Solicite novo convite.'}
+    finally{btn.disabled=false}
+  });
+  $('btnDemo').addEventListener('click',enterDemo);
  $('btnLogout').addEventListener('click',async()=>{if(mode==='live'&&api)await api.auth.signOut();exitDemo()});
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
@@ -154,6 +214,14 @@ function bind(){
 (async()=>{
  bind();
  if(window.supabase?.createClient){try{api=window.supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
-  const {data:{session}}=await api.auth.getSession();if(session){try{await enterLive()}catch(e){$('loginMessage').textContent=e.message}}
+  api.auth.onAuthStateChange((event,session)=>{
+     if(event==='PASSWORD_RECOVERY'&&session)showPasswordSetup();
+     if(event==='SIGNED_IN'&&session&&changingPassword)showPasswordSetup();
+   });
+   const {data:{session}}=await api.auth.getSession();
+   if(session){
+     if(changingPassword)showPasswordSetup();
+     else{try{await enterLive()}catch(e){$('loginMessage').textContent=e.message}}
+   }
  }catch(e){console.warn('Autenticação não inicializada')}}
 })();
