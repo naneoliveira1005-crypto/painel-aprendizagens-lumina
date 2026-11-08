@@ -23,6 +23,55 @@ function fitLine(points,axis){
  fit=solve(filtered);if(!fit)return null;
  return {...fit,n:filtered.length,dispersion:median(filtered.map(p=>Math.abs(p[1]-fit.a*p[0]-fit.b)))};
 }
+
+function headerCorners(canvas,W,H,rgba){
+ // Estratégia complementar para fundo claro: localiza a faixa extensa verde-escura
+ // no topo do modelo Lumina, depois estima os limites A4. Mantém falha fechada.
+ const green=(x,y)=>{
+  if(x<0||x>=W||y<0||y>=H)return false;
+  const k=(y*W+x)*4,r=rgba[k],g=rgba[k+1],b=rgba[k+2];
+  return r<155&&g<185&&b<160&&g-r>11&&g-b>-12&&g-b<65;
+ };
+ let yStart=-1,bestWidth=0,xL=0,xR=0;
+ for(let y=2;y<Math.ceil(H*.37);y+=2){
+  let count=0,first=W,last=0;
+  for(let x=2;x<W-2;x+=2){
+   if(green(x,y)){count++;if(x<first)first=x;last=x;}
+  }
+  if(count<W*.21)continue;
+  if(last-first>bestWidth){bestWidth=last-first;xL=first;xR=last;yStart=y;}
+ }
+ if(yStart<0||bestWidth<W*.45)return null;
+ let minY=H;
+ for(let y=2;y<Math.min(H*.35,yStart+17);y+=2){
+  let n=0;for(let x=xL+5;x<xR-5;x+=3)if(green(x,y))n++;
+  if(n>(xR-xL)/3*.28)minY=Math.min(minY,y);
+ }
+ if(minY===H)minY=yStart;
+ const topSamples=[];
+ for(let x=Math.round(xL+bestWidth*.06);x<xR-bestWidth*.06;x+=Math.max(6,Math.round(bestWidth/18))){
+  for(let y=Math.max(2,minY-20);y<Math.min(H*.34,minY+30);y++){
+   if(green(x,y)&&green(x,Math.min(H-1,y+2))){
+    topSamples.push([x,y]);break;
+   }
+  }
+ }
+ if(topSamples.length<8)return null;
+ const line=fitLine(topSamples,1);
+ if(!line||line.n<7||Math.abs(line.a)>.28)return null;
+ const width=xR-xL,pageHeight=width*(841.8897637795277/595.2755905511812);
+ const topLeft={x:xL,y:line.a*xL+line.b};
+ const topRight={x:xR,y:line.a*xR+line.b};
+ const driftX=-line.a*pageHeight;
+ const bottomRight={x:xR+driftX,y:topRight.y+pageHeight};
+ const bottomLeft={x:xL+driftX,y:topLeft.y+pageHeight};
+ const corners=[topLeft,topRight,bottomRight,bottomLeft];
+ if(width<W*.38||width>W*1.03||pageHeight<H*.38||
+   corners.some(p=>p.x<-W*.12||p.x>W*1.12||p.y<-H*.10||p.y>H*1.12))return null;
+ return {corners:corners.map(p=>({x:p.x*canvas.width/W,y:p.y*canvas.height/H})),
+  method:"cabeçalho escuro",confidence:.71,metrics:{headWidth:width/W,topSlope:line.a}};
+}
+
 function documentCorners(canvas){
  if(!canvas||canvas.width<180||canvas.height<210) return null;
  const W=Math.min(480,canvas.width),H=Math.round(canvas.height*W/canvas.width);
@@ -30,6 +79,7 @@ function documentCorners(canvas){
  const c=document.createElement("canvas");c.width=W;c.height=H;
  const ctx=c.getContext("2d",{willReadFrequently:true});ctx.drawImage(canvas,0,0,W,H);
  const rgba=ctx.getImageData(0,0,W,H).data;
+ const headerAlternative=()=>headerCorners(canvas,W,H,rgba);
  const gray=new Float32Array(W*H);
  for(let i=0,j=0;i<rgba.length;i+=4,j++)gray[j]=rgba[i]*.299+rgba[i+1]*.587+rgba[i+2]*.114;
  // Caixa suavizada: ignora escrita e pequenas sombras sem apagar a borda da folha.
@@ -53,7 +103,7 @@ function documentCorners(canvas){
   if(xx>=3&&xx<=6&&yy>=3&&yy<=6)center.push(blur(x,y,6));
  }
  const bg=median(border),paper=median(center);
- if(paper-bg<20||paper<155)return null; // Falha fechada em mesa branca de baixo contraste.
+ if(paper-bg<20||paper<155)return headerAlternative(); // Falha fechada em mesa branca de baixo contraste.
  const threshold=bg+clamp((paper-bg)*.50,11,50);
  const above=(x,y)=>blur(x,y)>=threshold;
  // Encontra a maior faixa clara que cruza o centro nas linhas de amostragem.
@@ -75,11 +125,11 @@ function documentCorners(canvas){
   left.push([y,span[0]]);right.push([y,span[1]]);
  }
  const leftLine=fitLine(left,0),rightLine=fitLine(right,0);
- if(!leftLine||!rightLine||Math.min(leftLine.n,rightLine.n)<9)return null;
+ if(!leftLine||!rightLine||Math.min(leftLine.n,rightLine.n)<9)return headerAlternative();
  const cx=H*.53;
  const xl=leftLine.a*cx+leftLine.b,xr=rightLine.a*cx+rightLine.b;
  const width=xr-xl;
- if(width<W*.33||width>W*.96)return null;
+ if(width<W*.33||width>W*.96)return headerAlternative();
  // Detecta o limite inferior, amostrando colunas próximas ao centro da folha.
  const bottom=[];
  for(let j=1;j<=15;j++){
@@ -93,12 +143,12 @@ function documentCorners(canvas){
   if(last>H*.6&&last<H*.98)bottom.push([x,last]);
  }
  const bottomLine=fitLine(bottom,1);
- if(!bottomLine||bottomLine.n<6)return null;
+ if(!bottomLine||bottomLine.n<6)return headerAlternative();
  const centerX=(xl+xr)/2;
  const bottomCenter=bottomLine.a*centerX+bottomLine.b;
  // Estimativa física da altura A4. Cabeçalho verde pode ocultar a borda superior na máscara branca.
  const estimatedTop=bottomCenter-1.4142*width;
- if(estimatedTop<-H*.09||estimatedTop>H*.43)return null;
+ if(estimatedTop<-H*.09||estimatedTop>H*.43)return headerAlternative();
  // Ajusta o topo pela borda com maior contraste perto da altura geométrica A4.
  function edgeColor(x,y){
   const xx=Math.round(x),yy=Math.round(y),ra=5;
@@ -157,7 +207,7 @@ function documentCorners(canvas){
  if(normalizedArea<.23||normalizedArea>.98||ratio<.46||ratio>1.0||avgHeight<H*.43||
     topWidth<W*.28||bottomWidth<W*.28||
     points.some(p=>p.x<-.025*W||p.y<-.025*H||p.x>W*1.025||p.y>H*1.025)){
-   return null;
+   return headerAlternative();
  }
  // No browser do professor, 4 cantos são identificados sem cliques.
  const confidence=clamp(Math.min(leftLine.n,rightLine.n,bottomLine.n)/12,0,1);
