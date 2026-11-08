@@ -15,7 +15,7 @@
 <div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão V5 tenta detectar automaticamente a folha A4, corrigir a perspectiva de cada foto e então reconhecer o QR Code e as marcações em X. As fichas que não puderem ser identificadas com segurança seguem para revisão, sem digitação ou correção manual em massa.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
 <div class="grid">
 <section class="panel"><h2>1. Carregar as fichas</h2><p class="help">Selecione várias fotos (JPG/PNG) ou PDFs. Clique em <strong>Analisar lote inteiro</strong>: cada foto é localizada, enquadrada e corrigida automaticamente, sem marcar os cantos. Apenas as exceções precisarão de conferência.</p><input type="file" id="files" multiple accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"/><div class="buttons"><button id="analyze" disabled>▶ Analisar lote inteiro</button><button id="clear" class="alt">Limpar sessão</button></div><p class="message" id="message">Aguardando seleção de arquivos.</p><progress max="100" value="0" id="progress" aria-label="Progresso"></progress><p class="help" id="progressText">Nenhuma ficha analisada.</p></section>
-<section class="panel"><h2>2. Resultado do lote</h2><p class="help">As fichas com QR ausente, marcação dupla, marcação obrigatória vazia ou identificação repetida são separadas automaticamente.</p><div class="buttons"><button id="consolidate" disabled>✓ Consolidar fichas válidas</button><button id="csv" class="alt" disabled>⬇ Exportar CSV validado</button></div><p class="message" id="exportInfo">Nenhum resultado consolidado nesta sessão.</p><p class="help">Consolidar, nesta versão, significa preparar o arquivo de teste para conferência. Não grava no banco.</p></section>
+<section class="panel"><h2>2. Resultado do lote</h2><p class="help">As fichas com QR ausente, marcação dupla, marcação obrigatória vazia ou identificação repetida são separadas automaticamente.</p><div class="buttons"><button id="consolidate" disabled>✓ Consolidar fichas válidas</button><button id="csv" class="alt" disabled>⬇ Exportar CSV validado</button><button id="handoff" class="alt" disabled>Enviar lote para o Painel da Lumina</button></div><p class="message" id="exportInfo">Nenhum resultado consolidado nesta sessão.</p><p class="help">Consolidar, nesta versão, significa preparar o arquivo de teste para conferência. Não grava no banco.</p></section>
 </div>
 <div class="metrics"><div class="metric"><b id="countTotal">0</b><span>Fichas carregadas</span></div><div class="metric"><b id="countDone">0</b><span>Analisadas</span></div><div class="metric"><b id="countReady">0</b><span>Prontas para validar</span></div><div class="metric"><b id="countReview">0</b><span>Precisam de revisão</span></div></div>
 <section class="panel"><h2>3. Conferência de exceções</h2><p class="help">Se aparecer <b>“1 com pendência”</b>, <strong>clique na linha da ficha</strong> para descobrir o motivo exato. Confira o quadro <b>Observação</b> e o painel <b>Revisar ficha selecionada</b>. Não consolide uma ficha enquanto houver pendências de leitura.</p><p class="help">As causas podem ser QR não identificado, foto fora da proporção A4, quadradinhos desalinhados ou marcações não reconhecidas. A correção depende do motivo exibido.</p><div class="toolbar"><label for="filter">Mostrar</label><select id="filter"><option value="all">Todas</option><option value="review">Somente revisar</option><option value="ready">Somente prontas</option><option value="consolidated">Consolidadas</option></select></div><div class="scroll"><table><thead><tr><th>#</th><th>Arquivo / página</th><th>Identificação QR</th><th>Situação</th><th>Observação</th></tr></thead><tbody id="rows"><tr><td colspan="5" style="color:#6a8074">Nenhuma ficha carregada.</td></tr></tbody></table></div></section>
@@ -47,6 +47,7 @@ function setCounts(){
  $('analyze').disabled=processing||!queue.some(x=>x.state==='pending');
  $('consolidate').disabled=processing||!queue.some(x=>x.state==='ready');
  $('csv').disabled=!consolidated.size;
+ $('handoff').disabled=!consolidated.size;
 }
 function statusLabel(s){return {pending:'Aguardando',ready:'Pronta',review:'Revisar',consolidated:'Consolidada',failed:'Erro'}[s]||s;}
 function collectErrors(entry){
@@ -570,6 +571,17 @@ $('saveReview').onclick=()=>{if(selectedIndex<0)return;const entry=queue[selecte
 $('consolidate').onclick=()=>{const available=queue.filter(x=>x.state==='ready');if(!available.length)return;const uniq=new Set(consolidated.keys());let added=0;
  for(const e of available){if(uniq.has(e.code))continue;const record={codigo:e.code,arquivo:e.label,hipotese:e.answers.H,leitura:e.answers.L.join('|'),memoria:e.answers.T1,narrativo:e.answers.T2};for(let i=1;i<=7;i++)record['M'+i]=e.answers['M'+i];consolidated.set(e.code,record);uniq.add(e.code);e.state='consolidated';added++}
  $('exportInfo').textContent='Fichas consolidadas nesta sessão: '+consolidated.size+'. Clique em Exportar CSV. Nenhum dado foi enviado ao Supabase.';renderList();tell(added+' fichas adicionadas ao lote local validado.');
+};
+
+$('handoff').onclick=()=>{
+ if(!consolidated.size){tell('Nenhum resultado consolidado no leitor.');return;}
+ if(window.parent===window){tell('Para enviar sem baixar CSV, abra o leitor dentro do Painel da Lumina, na área protegida Leitura de fichas.');return;}
+ try{
+  if(window.parent.location.origin!==window.location.origin)throw new Error('Origem não autorizada.');
+  const rows=Array.from(consolidated.values());
+  window.parent.postMessage({type:'lumina:reader-pilot:v1',rows},window.location.origin);
+  tell('Lote enviado ao Painel da Lumina para conferência. Nenhum resultado foi publicado.');
+ }catch(err){tell('Não foi possível transferir o lote com segurança: '+(err?.message||'erro de autorização'))}
 };
 $('csv').onclick=()=>{const rows=Array.from(consolidated.values());if(!rows.length)return;const cols=['codigo','arquivo','hipotese','leitura','memoria','narrativo',...Array.from({length:7},(_,i)=>'M'+(i+1))];
  const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';const csv='\ufeff'+[cols.join(';'),...rows.map(r=>cols.map(c=>escape(r[c])).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='LUMINA_leitura_em_lote_VALIDACAO_LOCAL.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
