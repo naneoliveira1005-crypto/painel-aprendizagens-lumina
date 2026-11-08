@@ -82,6 +82,7 @@ function assessments(d){
 
    const classPending=selected.filter(s=>!s.active).length;
    const repeated=s=>d.students.some(t=>t.id!==s.id&&t.classroom_id!==s.classroom_id&&t.display_name.trim().toLocaleUpperCase('pt-BR')===s.display_name.trim().toLocaleUpperCase('pt-BR'));
+   const hasRepeatedName=selected.some(repeated);
    const tableRows=selected.map((s,i)=>{
     const duplicate=repeated(s);
     const status=duplicate?'<span class="chip warn">Nome em duas turmas</span>':s.active?'<span class="chip">Conferido</span>':'<span class="chip warn">A conferir</span>';
@@ -96,6 +97,11 @@ function assessments(d){
     <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
       <option value="">Selecione uma turma</option>${opts}</select>
     <p class="intro-note">Nesta turma: ${selected.length} registros; ${classPending} ainda pendentes.</p>
+    ${selected.length>0 && classPending>0?
+      hasRepeatedName?'<p class="intro-note">Confirmação da turma inteira bloqueada: há nome repetido em outra turma.</p>':
+      `<button type="button" class="smallbtn solid" data-verify-class="${clean(selectedRosterClass)}">Conferi a lista oficial: confirmar pendentes desta turma</button>`:
+      ''}
+    <p class="intro-note">Use a confirmação da turma inteira somente se TODOS os nomes e a turma estiverem corretos na lista oficial atual da secretaria. Se houver dúvida, confirme individualmente.</p>
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
     <p class="intro-note">Os QR Codes e os resultados oficiais continuam bloqueados até validação específica.</p></div>`;
@@ -129,6 +135,30 @@ function assessments(d){
  ${studentSection}`;
 }
 
+async function verifyRosterClass(classroomId,button){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const klass=loaded.classrooms.find(c=>c.id===classroomId);
+ if(!klass)return;
+ const all=loaded.students.filter(s=>s.classroom_id===classroomId);
+ if(all.some(s=>loaded.students.some(t=>t.id!==s.id&&t.classroom_id!==s.classroom_id&&t.display_name.trim().toLocaleUpperCase('pt-BR')===s.display_name.trim().toLocaleUpperCase('pt-BR')))){
+   rosterReviewMessage='Confirmação da turma bloqueada: há um nome repetido em outra turma.';render();return;
+ }
+ const pendentes=all.filter(s=>!s.active);
+ if(!pendentes.length)return;
+ const answer=window.prompt(`Para confirmar ${pendentes.length} matrícula(s) no ${klass.label}, confira TODOS os nomes e a turma com a lista oficial atual da secretaria. Se já conferiu, digite CONFERI. Caso contrário, cancele.`);
+ if(answer?.trim().toUpperCase()!=='CONFERI')return;
+ button.disabled=true;button.textContent='Registrando conferência...';
+ try{
+  const ids=pendentes.map(s=>s.id);
+  const {data,error}=await api.from('students').update({active:true}).in('id',ids).eq('classroom_id',classroomId).eq('active',false).select('id,active');
+  if(error)throw error;
+  const returned=new Set((data||[]).map(s=>s.id));
+  for(const student of pendentes){if(returned.has(student.id))student.active=true;}
+  if(returned.size!==ids.length){rosterReviewMessage='Algumas alterações precisam ser reconferidas. Clique em Atualizar.';}
+  else{rosterReviewMessage=`Conferência registrada: ${returned.size} matrícula(s) no ${klass.label}.`;}
+  render();
+ }catch(e){console.warn('Falha na confirmação da turma',e?.code||e?.message);rosterReviewMessage='Não foi possível confirmar esta turma. Clique em Atualizar e confira.';render();}
+}
 async function updateStudentReview(studentId,nextActive,button){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
  const s=loaded.students.find(x=>x.id===studentId);
@@ -313,7 +343,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
