@@ -11,7 +11,7 @@ canvas{max-width:100%;border:1px solid #b3c4b6}iframe{width:100%;height:680px;bo
 <script src="qrcode-generator.js"></script>
 <script src="fichas-personalizadas.js?v=20261108-teste-v4"></script>
 </head><body>
-<h1>Teste técnico fictício: foto inclinada → A4 → leitor QR + X</h1>
+<h1>Teste técnico fictício: foto inclinada → A4 → leitor QR + X</h1><p><strong>QA2: teste de bordas e pixels da folha branca.</strong></p>
 <p>Somente uma ficha fictícia é criada no próprio navegador. Nada é enviado ao banco, nem contém dados reais de crianças.</p>
 <button id="run" type="button">Executar teste completo automaticamente</button>
 <pre id="status">Pronto para testar.</pre>
@@ -57,8 +57,12 @@ $('run').onclick=async()=>{
   const photo=await makePhoto();
   const iframe=$('reader'),frame=iframe.contentWindow,doc=frame.document;
   await pauseFor(()=>doc.querySelector('#files')&&typeof frame.LuminaAutoA4?.detect==='function',15000);
+  const pixel=$('photo').getContext('2d').getImageData(360,400,1,1).data;
+  const pixelOutside=$('photo').getContext('2d').getImageData(7,7,1,1).data;
+  const pixelsNote='Pixels de teste: centro RGB='+Array.from(pixel).slice(0,3).join(',')+'; fundo RGB='+Array.from(pixelOutside).slice(0,3).join(',');
   const detectedCorners=frame.LuminaAutoA4.detect($('photo'));
   const detectionResult=detectedCorners?'Bordas automáticas: '+detectedCorners.corners.map(c=>'('+Math.round(c.x)+','+Math.round(c.y)+')').join(' ')+'; confiança '+Math.round(detectedCorners.confidence*100)+'%':'Bordas automáticas: NÃO DETECTADAS';
+  $('status').textContent='QA2 — '+detectionResult+'\n'+pixelsNote+'\nPreparando leitor...';
   const file=new File([photo],'foto-ficticia-inclinada.png',{type:'image/png'});
   const dt=new DataTransfer();dt.items.add(file);
   doc.querySelector('#files').files=dt.files;
@@ -69,7 +73,7 @@ $('run').onclick=async()=>{
   await pauseFor(()=>doc.querySelector('#message').textContent.includes('Análise finalizada'),90000);
   const result=doc.querySelector('#message').textContent;
   const detail=doc.querySelector('#rows')?.innerText||'';
-  $('status').textContent='RESULTADO DO LEITOR:\n'+result+'\n'+detectionResult+'\nDETALHES:\n'+detail+
+  $('status').textContent='RESULTADO DO LEITOR:\n'+result+'\n'+detectionResult+'\n'+pixelsNote+'\nDETALHES:\n'+detail+
     '\n\nResultado esperado: 1 pronta; 0 com pendências. Nesta simulação, a detecção deve corrigir automaticamente a foto.';
  }catch(err){
   $('status').textContent='TESTE NÃO CONCLUÍDO: '+(err.message||String(err));
