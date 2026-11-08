@@ -31,6 +31,7 @@ async function makePhoto(){
  const svgText=window.LuminaFichas.testFixtureMarkup();
  const div=document.createElement('div');div.innerHTML=svgText;
  const svg=div.querySelector('svg');svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+ const paper=document.createElementNS('http://www.w3.org/2000/svg','rect');paper.setAttribute('x','0');paper.setAttribute('y','0');paper.setAttribute('width','100%');paper.setAttribute('height','100%');paper.setAttribute('fill','#ffffff');svg.insertBefore(paper,svg.firstChild);
  svg.setAttribute('width','1191');svg.setAttribute('height','1684');
  const u=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml;charset=utf-8'}));
  try{
@@ -56,6 +57,8 @@ $('run').onclick=async()=>{
   const photo=await makePhoto();
   const iframe=$('reader'),frame=iframe.contentWindow,doc=frame.document;
   await pauseFor(()=>doc.querySelector('#files')&&typeof frame.LuminaAutoA4?.detect==='function',15000);
+  const detectedCorners=frame.LuminaAutoA4.detect($('photo'));
+  const detectionResult=detectedCorners?'Bordas automáticas: '+detectedCorners.corners.map(c=>'('+Math.round(c.x)+','+Math.round(c.y)+')').join(' ')+'; confiança '+Math.round(detectedCorners.confidence*100)+'%':'Bordas automáticas: NÃO DETECTADAS';
   const file=new File([photo],'foto-ficticia-inclinada.png',{type:'image/png'});
   const dt=new DataTransfer();dt.items.add(file);
   doc.querySelector('#files').files=dt.files;
@@ -66,7 +69,7 @@ $('run').onclick=async()=>{
   await pauseFor(()=>doc.querySelector('#message').textContent.includes('Análise finalizada'),90000);
   const result=doc.querySelector('#message').textContent;
   const detail=doc.querySelector('#rows')?.innerText||'';
-  $('status').textContent='RESULTADO DO LEITOR:\n'+result+'\nDETALHES:\n'+detail+
+  $('status').textContent='RESULTADO DO LEITOR:\n'+result+'\n'+detectionResult+'\nDETALHES:\n'+detail+
     '\n\nResultado esperado: 1 pronta; 0 com pendências. Nesta simulação, a detecção deve corrigir automaticamente a foto.';
  }catch(err){
   $('status').textContent='TESTE NÃO CONCLUÍDO: '+(err.message||String(err));
