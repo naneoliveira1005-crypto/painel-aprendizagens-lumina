@@ -435,6 +435,69 @@ function reviewCSV(file){
  reader.onerror=()=>area.textContent='Não foi possível ler o arquivo local.';
  reader.readAsText(file,'utf-8');
 }
+
+function pilotRecords(csvText,authorizedStudents){
+ const status=checkReaderCSV(csvText,authorizedStudents,loaded.classrooms,true);
+ if(!status.tallies.total||status.tallies.total>10||status.tallies.review)
+  throw new Error('CSV não elegível para o piloto: é necessário resolver as pendências.');
+ const lines=parseDelimited(String(csvText||'').replace(/^\uFEFF/,''),';');
+ const cols=lines[0].map(x=>x.trim().toLowerCase());
+ const ix=Object.fromEntries(cols.map((c,i)=>[c,i]));
+ const matching=new Map(authorizedStudents.map(s=>[String(s.local_reference||'').toUpperCase(),s]));
+ const output=[],classrooms=new Set();
+ for(const line of lines.slice(1)){
+  if(!line.some(v=>String(v).trim()))continue;
+  const get=c=>String(line[ix[c]]||'').trim();
+  const code=get('codigo').toUpperCase(),student=matching.get(code);
+  if(!student||!student.active)throw new Error('Código de matrícula não autorizado.');
+  classrooms.add(student.classroom_id);
+  output.push({student_id:student.id,qr_code:code,
+   answers:{H:get('hipotese'),L:get('leitura').split('|').map(x=>x.trim()).filter(Boolean),
+    T1:get('memoria'),T2:get('narrativo'),
+    ...Object.fromEntries(Array.from({length:7},(_,i)=>['M'+(i+1),get('m'+(i+1))]))}});
+ }
+ if(classrooms.size!==1)throw new Error('Separe o piloto por turma.');
+ return output;
+}
+async function stagePilotCSV(button,area){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api||!pilotCandidate)return;
+ const candidate=pilotCandidate;
+ if(candidate.ownerId!==profile.user_id)return;
+ if(!window.confirm('Guardar este lote PILOTO na área protegida para conferência pedagógica? Nenhum resultado oficial será publicado e nenhuma foto será enviada.'))return;
+ button.disabled=true;button.textContent='Registrando lote provisório...';
+ try{
+  const {data:auth,error:authErr}=await api.auth.getUser();
+  if(authErr||auth?.user?.id!==profile.user_id)
+   throw new Error('Sessão institucional não confirmada. Entre novamente.');
+  const rows=pilotRecords(candidate.csv,loaded.students);
+  if(!window.crypto?.subtle)throw new Error('O navegador não permite confirmar a integridade do CSV.');
+  const data=new TextEncoder().encode(candidate.csv);
+  const digest=await window.crypto.subtle.digest('SHA-256',data);
+  const hash=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+  const result=await api.rpc('lumina_stage_csv_pilot',{
+   p_cycle_id:candidate.cycleId,p_source_hash:hash,p_rows:rows
+  });
+  if(result.error)throw new Error(result.error.message||'O banco recusou o lote.');
+  if(mode!=='live'||profile?.user_id!==candidate.ownerId)return;
+  pilotCandidate=null;
+  area.replaceChildren();
+  const success=document.createElement('p');
+  success.textContent='Lote piloto guardado na área protegida. Fichas recebidas: '+Number(result.data?.rows_staged||0)+'. Situação: EM CONFERÊNCIA PEDAGÓGICA. Nenhum resultado oficial foi publicado.';
+  area.appendChild(success);
+  const hint=document.createElement('p');
+  hint.textContent='As fotografias originais não foram armazenadas nesta etapa. Preserve-as em local institucional protegido até ativarmos a área de imagens.';
+  area.appendChild(hint);
+  await refreshLive();
+ }catch(error){
+  if(mode==='live'&&profile?.user_id===candidate.ownerId){
+   const warning=document.createElement('p');
+   warning.textContent='Não foi possível registrar o lote: '+(error?.message||'falha não identificada')+'. Nenhuma avaliação oficial foi alterada.';
+   area.appendChild(warning);
+  }
+  button.disabled=false;button.textContent='Tentar registrar lote provisório';
+ }
+}
+
 function parseDelimited(text,delimiter){
  const rows=[];let row=[],field='',quoted=false;
  for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(quoted&&text[i+1]==='"'){field+='"';i++}else quoted=!quoted}
