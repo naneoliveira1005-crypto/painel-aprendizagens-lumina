@@ -6,7 +6,7 @@
 :root{--green:#153e34;--green2:#28634e;--mint:#ecf4f0;--gold:#b49a58;--ink:#20332e;--muted:#5e746b;--line:#dbe6e1;--bg:#f5f7f5;--red:#a13636;--yellow:#946d21;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}h1,h2,h3,p{margin-top:0}.pagehead{background:var(--green);color:#fff;padding:25px max(20px,calc((100vw - 1220px)/2));border-bottom:5px solid var(--gold)}.pagehead .brand{letter-spacing:2px;text-transform:uppercase;opacity:.8;font-size:11px;font-weight:700}.pagehead h1{font-size:clamp(23px,3vw,33px);margin:8px 0}.pagehead p{margin:0;color:#d6e7df}.wrap{max-width:1220px;margin:25px auto;padding:0 16px 40px}.note{border:1px solid #e6d7b2;background:#fffdf7;border-radius:12px;padding:13px 16px;font-size:14px;line-height:1.5;margin-bottom:19px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:0 3px 12px rgba(25,65,50,.03);min-width:0}.panel h2{font-size:19px;margin-bottom:6px}.help{font-size:13px;color:var(--muted);line-height:1.5}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:9px;background:var(--green2);color:white;padding:11px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px}button.alt{border:1px solid var(--green2);color:var(--green2);background:white}button:disabled{opacity:.46;cursor:not-allowed}input[type=file]{max-width:100%;border:1px dashed #b7c8bf;padding:14px;background:#f9fcfa;border-radius:10px;width:100%}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:19px 0}.metric{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px}.metric b{display:block;font-size:27px;color:var(--green)}.metric span{font-size:12px;color:var(--muted)}progress{width:100%;height:12px;accent-color:var(--green2)}.long{grid-column:1/-1}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:15px 0}.toolbar select{width:auto}.scroll{overflow:auto;border:1px solid var(--line);border-radius:11px;max-height:410px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e5ece8;white-space:nowrap}th{position:sticky;top:0;background:#f0f5f1;z-index:1;font-size:12px;color:#4c675b}tr:hover td{background:#f7faf8}tbody tr{cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:700;font-size:11px}.ok{background:#e1f3e8;color:#1e6944}.err{background:#fff2dc;color:#875e12}.pending{background:#eff1f0;color:#5f6f67}.selected td{background:#e7f1ec!important}.review{display:grid;grid-template-columns:1fr 1fr;gap:20px}.preview{width:auto;height:auto;max-width:100%;max-height:650px;background:#f7f7f7;border:1px solid var(--line);border-radius:9px;display:block;margin:0 auto;cursor:crosshair} .crop-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px} .crop-actions button{font-size:12px} .crop-help{font-size:13px;background:#edf4ef;border-radius:9px;padding:12px;margin:9px 0;line-height:1.55}.field{margin:12px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field select{border:1px solid #bacdc3;border-radius:9px;padding:9px;max-width:100%;width:100%;background:white;color:var(--ink)}.hint{font-size:12px;color:var(--muted)}.message{margin-top:10px;font-size:13px;min-height:20px}.checkboxes{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}.checkboxes label{font-size:12px}.footer{font-size:12px;color:#63746e;margin-top:23px}#reviewMessage{white-space:pre-line}.hide{display:none!important}@media(max-width:860px){.grid,.review{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.panel{padding:16px}}@media(max-width:480px){.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 <script src="jsqr-fallback.js"></script>
-<script src="auto-a4.js?v=20261108-qr-vertical-v3"></script>
+<script src="auto-a4.js?v=20261108-segmentacao-v4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
@@ -154,13 +154,24 @@ function calibrateGroup(keys, b, all, initial){
  }
  return {scores,paired:pairCount,transform:t};
 }
-const MARK_THRESHOLD=.22;
-// V5: quando há escurecimento residual das bordas em uma hipótese de escrita,
-// exige contraste contra a intensidade mediana dos demais quadrinhos.
-// Duas marcas efetivamente escuras permanecem em revisão.
+const MARK_THRESHOLD=.46;
+// V6: fotos reais produzem sombreamento dentro até dos quadradinhos vazios.
+// Nunca considerar todo quadrado com >22% de tinta como X. Usar contraste
+// entre as alternativas do MESMO indicador e exigir distância suficiente.
+function uniqueMarked(options,scores){
+ const samples=options.map(k=>({key:k,value:scores[k]||0})).sort((a,b)=>b.value-a.value);
+ const threshold=Math.max(MARK_THRESHOLD,median(samples.map(v=>v.value))+.13);
+ return samples[0]?.value>=threshold &&
+   samples[0].value-(samples[1]?.value||0)>=.13?samples[0].key:'';
+}
+function readingThreshold(scores){
+ const v=L.map(k=>scores[k]||0),lo=Math.min(...v),hi=Math.max(...v);
+ if(hi<MARK_THRESHOLD)return MARK_THRESHOLD;
+ return lo>.60?.55:Math.max(.44,(lo+hi)/2);
+}
 function hypothesisThreshold(scores){
- const v=H.map(k=>scores[k]||0);
- return Math.max(MARK_THRESHOLD,median(v)+.18);
+ const values=H.map(k=>scores[k]||0);
+ return Math.max(MARK_THRESHOLD,median(values)+.13);
 }
 function getAnswers(canvas){
  const all=bwCandidates(canvas),scores={},align={};
@@ -175,12 +186,12 @@ function getAnswers(canvas){
  }
  const answers={},thresholds={};
  for(const [_,key,options] of GROUPS){
-  const threshold=key==='H'?hypothesisThreshold(scores):MARK_THRESHOLD;
-  thresholds[key]=threshold;
-  const marked=options.filter(k=>scores[k]>=threshold);
-  answers[key]=marked.length===1?marked[0]:'';
+  thresholds[key]=key==='H'?hypothesisThreshold(scores):
+    Math.max(MARK_THRESHOLD,median(options.map(k=>scores[k]||0))+.13);
+  answers[key]=uniqueMarked(options,scores);
  }
- answers.L=L.filter(k=>scores[k]>=MARK_THRESHOLD);
+ thresholds.L=readingThreshold(scores);
+ answers.L=L.filter(k=>scores[k]>=thresholds.L);
  const aligned=align.M>=20&&align.H>=3&&align.T>=4;
  return {answers,scores,align,aligned,candidates:all.boxes.length,thresholds};
 }
@@ -237,6 +248,53 @@ function readingQuality(reading,code,shapeWarning){
  const required=GROUPS.filter(([,key,opts])=>opts.includes(reading.answers?.[key])).length;
  return required*3+(code?7:0)+(reading.aligned?5:0)-(shapeWarning?8:0);
 }
+async function normalizeByQr(canvas){
+ // Depois de localizar o papel, mede com o próprio QR quanto a IMPRESSORA
+ // reduziu o formulário dentro do A4. Assim as coordenadas dos X voltam ao
+ // modelo, independentemente de "Ajustar à página" na impressão.
+ if(typeof window.jsQR!=='function')return {canvas,found:false};
+ try{
+  const cw=canvas.width,ch=canvas.height;
+  const sx=Math.floor(cw*.61),sy=0,sw=cw-sx,sh=Math.round(ch*.31);
+  const temp=document.createElement('canvas');temp.width=550;temp.height=550;
+  const tempCtx=temp.getContext('2d',{willReadFrequently:true});
+  tempCtx.drawImage(canvas,sx,sy,sw,sh,0,0,550,550);
+  const data=tempCtx.getImageData(0,0,550,550);
+  const hit=window.jsQR(data.data,550,550,{inversionAttempts:'attemptBoth'});
+  if(!hit||!qrPayloadToId(hit.data)||!hit.location)return {canvas,found:false};
+  const pt=point=>({x:sx+point.x*sw/550,y:sy+point.y*sh/550});
+  const corners=[
+   pt(hit.location.topLeftCorner),pt(hit.location.topRightCorner),
+   pt(hit.location.bottomRightCorner),pt(hit.location.bottomLeftCorner)
+  ];
+  const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const observedW=(dist(corners[0],corners[1])+dist(corners[3],corners[2]))/2;
+  const observedH=(dist(corners[0],corners[3])+dist(corners[1],corners[2]))/2;
+  // QR versão 3 (29 módulos); SVG viewBox 99 com 6 de margem,
+  // inserido na ficha em (478,30), tamanho 96x96 pontos.
+  const blackQR=96*87/99;
+  const refW=blackQR*cw/PAGE[0],refH=blackQR*ch/PAGE[1];
+  const scaleX=observedW/refW,scaleY=observedH/refH;
+  if(scaleX<.75||scaleX>1.20||scaleY<.75||scaleY>1.20)return {canvas,found:false};
+  const observedCenter={x:corners.reduce((v,p)=>v+p.x,0)/4,
+    y:corners.reduce((v,p)=>v+p.y,0)/4};
+  const refCenter={x:(478+48)*cw/PAGE[0],y:(30+48)*ch/PAGE[1]};
+  const shiftX=observedCenter.x-scaleX*refCenter.x;
+  const shiftY=observedCenter.y-scaleY*refCenter.y;
+  if(Math.abs(shiftX)>cw*.19||Math.abs(shiftY)>ch*.15)return {canvas,found:false};
+  const corrected=document.createElement('canvas');corrected.width=cw;corrected.height=ch;
+  const ctx=corrected.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle='white';ctx.fillRect(0,0,cw,ch);
+  ctx.setTransform(1/scaleX,0,0,1/scaleY,-shiftX/scaleX,-shiftY/scaleY);
+  ctx.drawImage(canvas,0,0);
+  ctx.setTransform(1,0,0,1,0,0);
+  return {canvas:corrected,found:true,code:qrPayloadToId(hit.data),
+    metric:{scaleX,scaleY,shiftX,shiftY}};
+ }catch(err){
+  console.warn('QR identificado, mas normalização de impressão indisponível.',err?.message);
+  return {canvas,found:false};
+ }
+}
 async function analyzeOne(entry){
  const original=await renderEntry(entry,true);
  const originalShape=Math.abs(original.width/original.height-PAGE[0]/PAGE[1])>.06;
@@ -248,10 +306,13 @@ async function analyzeOne(entry){
    autoAttempted=true;
    try{
     const straightened=quadProjection(found.corners,original);
-    const read=getAnswers(straightened),qr=await readQr(straightened);
+    const normalized=await normalizeByQr(straightened);
+    const readyCanvas=normalized.canvas;
+    const read=getAnswers(readyCanvas);
+    const qr=normalized.code||await readQr(readyCanvas);
     const score=readingQuality(read,qr,false);
-    selected={canvas:straightened,reading:read,code:qr,shape:false,score};
-    if(score>=42)frame=found;
+    selected={canvas:readyCanvas,reading:read,code:qr,shape:false,score};
+    if(score>=42)frame={...found,method:found.method+(normalized.found?' + calibração QR':'')};
    }catch(err){console.warn('Enquadramento automático não concluído',err?.message);}
   }
  }
