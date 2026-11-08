@@ -12,7 +12,7 @@ const roleName = {teacher:'Professora',pedagogical_admin:'Coordenação pedagóg
 const plannedName = {teacher:'Professora',pedagogical_admin:'Coordenadora',director:'Diretora'};
 let api=null;
 let mode='guest', currentPage='visao', role='pedagogical_admin', profile=null;
-let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],batches:[],importRows:[]};
+let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
  ['1º A','matutino'],['1º B','vespertino'],['2º A','matutino'],['2º B','matutino'],['2º C','vespertino'],
  ['3º A','matutino'],['3º B','matutino'],['3º C','vespertino'],['3º D','vespertino'],
@@ -21,7 +21,7 @@ const demoClasses=[
 ].map((x,i)=>({id:'demo-'+(i+1),label:x[0],shift:x[1],school_year:2026}));
 const demoData={
  classrooms:demoClasses,
- students:[],results:[],cycles:[{title:'Avaliação diagnóstica • Exemplo',status:'draft'}],staff:[],
+ students:[],results:[],cycles:[{title:'Avaliação diagnóstica • Exemplo',status:'draft'}],staff:[],staffLinks:[],
  batches:[{id:'demo-batch',source_filename:'Fichas fictícias — exemplo',expected_rows:7,status:'review',classroom_id:'demo-3'}],
  importRows:[]
 };
@@ -79,8 +79,8 @@ function batches(d){
 function team(d){
  if(role==='teacher') return `<div class="card"><h2>Minha autorização</h2><p>Você pode consultar as turmas vinculadas ao seu perfil. A coordenação confirma vínculos e altera permissões.</p>${notice('Se alguma turma não aparecer, procure a coordenação pedagógica. Não compartilhe senha nem CPF.','info')}</div>`;
  if(role==='director')return `<div class="card"><h2>Visão institucional</h2><p>A direção acompanha informações coletivas. A atribuição de turmas e o lançamento de resultados dependem da coordenação.</p>${notice('Os dados individuais das crianças não estão disponíveis neste perfil.','info')}</div>`;
- const rows=d.staff.map(s=>`<tr><td>${clean(s.full_name)}</td><td>${clean(plannedName[s.planned_role]||s.planned_role)}</td><td>${s.email?clean(s.email):'<span class="chip warn">Pendente</span>'}</td><td>${chip(s.status)}</td></tr>`).join('');
- return `<div class="card"><h2>Pré-cadastro de profissionais</h2><p>A equipe está em conferência. Os nomes e e-mails exibidos dependem da versão aprovada pela escola.</p><div class="tablewrap"><table><thead><tr><th>Profissional</th><th>Função</th><th>E-mail</th><th>Acesso</th></tr></thead><tbody>${rows||'<tr><td colspan="4">O cadastro da equipe ainda não foi liberado.</td></tr>'}</tbody></table></div></div>${notice('<strong>Convites ainda não enviados.</strong> A ativação exige e-mails confirmados, aprovação dos vínculos e testes com contas reais. CPF não é senha; a futura entrada por CPF precisa de serviço protegido, sem revelar dados pessoais.','info')}`;
+ const rows=d.staff.map(s=>{const turmas=(d.staffLinks||[]).filter(x=>x.staff_id===s.id).map(x=>d.classrooms.find(c=>c.id===x.classroom_id)?.label).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR')).join(', ')||'A definir';return `<tr><td>${clean(s.full_name)}<div class="intro-note">Turmas: ${clean(turmas)}</div></td><td>${clean(plannedName[s.planned_role]||s.planned_role)}</td><td>${s.email?clean(s.email):'<span class="chip warn">Pendente</span>'}</td><td>${chip(s.status)}</td></tr>`;}).join('');
+ return `<div class="card"><h2>Pré-cadastro de profissionais</h2><p>A equipe está em conferência. Os nomes e e-mails exibidos dependem da versão aprovada pela escola.</p><div class="tablewrap"><table><thead><tr><th>Profissional</th><th>Função</th><th>E-mail</th><th>Acesso</th></tr></thead><tbody>${rows||'<tr><td colspan="4">O cadastro da equipe ainda não foi liberado.</td></tr>'}</tbody></table></div></div>${notice('<strong>Priscila já tem acesso ativo.</strong> Os convites das professoras e da direção ainda não foram enviados. A ativação exige e-mails confirmados, aprovação dos vínculos e testes com contas reais. CPF não é senha; a futura entrada por CPF precisa de serviço protegido, sem revelar dados pessoais.','info')}`;
 }
 function reviewCSV(file){
  const area=$('csvReport');if(!area||!file)return;
@@ -150,13 +150,14 @@ async function refreshLive(){
    get('assessment_cycles','id,title,status,school_year'),
    profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id','none'),
    profile.role==='director'?Promise.resolve([]):get('assessment_results','student_id,cycle_id,answers','none'),
-   profile.role==='pedagogical_admin'?get('staff_directory','full_name,planned_role,email,status'):Promise.resolve([]),
+   profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
+   profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status','none'):Promise.resolve([])
  ]);
  if(mode!=='live'||profile?.user_id!==currentUser)return;
- const [classrooms,cycles,students,official,staff,batches,importRows]=results;
- loaded={classrooms,cycles,students,results:official,staff,batches,importRows};
+ const [classrooms,cycles,students,official,staff,staffLinks,batches,importRows]=results;
+ loaded={classrooms,cycles,students,results:official,staff,staffLinks,batches,importRows};
  render();
 }
 function enterDemo(){mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
