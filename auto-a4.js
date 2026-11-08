@@ -107,8 +107,85 @@ function headerCorners(canvas,W,H,rgba){
   method:"cabeçalho escuro + escala QR",confidence:.74,metrics:{headWidth:width/W,topSlope:line.a,qrStretch}};
 }
 
+
+function detectOtsuSheet(canvas){
+ // Folha ocupando grande parte da foto: separar o papel claro da mesa escura
+ // com limiar de Otsu, identificar a maior região contínua e ajustar as quatro bordas.
+ const W=Math.min(480,canvas.width),H=Math.round(canvas.height*W/canvas.width);
+ if(W<180||H<240||H>1200)return null;
+ const temp=document.createElement('canvas');temp.width=W;temp.height=H;
+ const cx=temp.getContext('2d',{willReadFrequently:true});
+ cx.drawImage(canvas,0,0,W,H);
+ const rgba=cx.getImageData(0,0,W,H).data;
+ const lum=new Uint8Array(W*H),hist=new Int32Array(256);
+ let total=0;
+ for(let p=0,k=0;p<lum.length;p++,k+=4){
+  const v=Math.round(rgba[k]*.299+rgba[k+1]*.587+rgba[k+2]*.114);
+  lum[p]=v;hist[v]++;total+=v;
+ }
+ let bestT=0,bestV=-1,nLeft=0,acc=0;
+ for(let t=0;t<255;t++){
+  nLeft+=hist[t];acc+=t*hist[t];
+  if(!nLeft||nLeft===lum.length)continue;
+  const m0=acc/nLeft,m1=(total-acc)/(lum.length-nLeft);
+  const variance=nLeft*(lum.length-nLeft)*(m0-m1)*(m0-m1);
+  if(variance>bestV){bestV=variance;bestT=t}
+ }
+ if(bestT<55||bestT>230)return null;
+ // Removemos ruídos isolados preservando linhas finas da borda do papel.
+ const bright=new Uint8Array(W*H);
+ for(let p=0;p<lum.length;p++)bright[p]=lum[p]>bestT?1:0;
+ const labels=new Int32Array(W*H),fifo=new Int32Array(W*H);
+ let tag=0,bestTag=0,bestArea=0,bounds=null;
+ for(let p=0;p<bright.length;p++){
+  if(!bright[p]||labels[p])continue;
+  const label=++tag;let head=0,tail=0,xlo=W,xhi=0,ylo=H,yhi=0;
+  fifo[tail++]=p;labels[p]=label;
+  while(head<tail){
+   const z=fifo[head++],x=z%W,y=(z-x)/W;
+   if(x<xlo)xlo=x;if(x>xhi)xhi=x;if(y<ylo)ylo=y;if(y>yhi)yhi=y;
+   if(x>0){const n=z-1;if(bright[n]&&!labels[n]){labels[n]=label;fifo[tail++]=n}}
+   if(x<W-1){const n=z+1;if(bright[n]&&!labels[n]){labels[n]=label;fifo[tail++]=n}}
+   if(y>0){const n=z-W;if(bright[n]&&!labels[n]){labels[n]=label;fifo[tail++]=n}}
+   if(y<H-1){const n=z+W;if(bright[n]&&!labels[n]){labels[n]=label;fifo[tail++]=n}}
+  }
+  if(tail>bestArea){bestArea=tail;bestTag=label;bounds={xlo,xhi,ylo,yhi}}
+ }
+ const ratio=bestArea/(W*H);
+ if(!bounds||ratio<.27||ratio>.94||bounds.xhi-bounds.xlo<W*.38||
+     bounds.yhi-bounds.ylo<H*.47)return null;
+ const xs=[],top=[],bottom=[];
+ const step=Math.max(3,Math.round((bounds.xhi-bounds.xlo)/90));
+ for(let x=bounds.xlo+Math.round((bounds.xhi-bounds.xlo)*.08);
+     x<bounds.xhi-Math.round((bounds.xhi-bounds.xlo)*.08);x+=step){
+  let hi=-1,lo=-1;
+  for(let y=bounds.ylo;y<=bounds.yhi;y++){
+   if(labels[y*W+x]!==bestTag)continue;
+   if(hi<0)hi=y;lo=y;
+  }
+  if(hi>=0&&hi<H*.40&&lo>H*.60){xs.push(x);top.push([x,hi]);bottom.push([x,lo]);}
+ }
+ if(xs.length<18)return null;
+ const upper=fitLine(top,1),lower=fitLine(bottom,1);
+ if(!upper||!lower||upper.n<12||lower.n<12||
+    upper.dispersion>7||lower.dispersion>9)return null;
+ const l=bounds.xlo,r=bounds.xhi;
+ const corners=[
+  {x:l,y:upper.a*l+upper.b},{x:r,y:upper.a*r+upper.b},
+  {x:r,y:lower.a*r+lower.b},{x:l,y:lower.a*l+lower.b}
+ ];
+ const height=(corners[3].y-corners[0].y+corners[2].y-corners[1].y)/2;
+ const aspect=(r-l)/height;
+ if(height<H*.49||aspect<.43||aspect>1.03||
+   corners.some(p=>p.y<-.04*H||p.y>1.04*H))return null;
+ return {corners:corners.map(p=>({x:p.x*canvas.width/W,y:p.y*canvas.height/H})),
+  method:'segmentação da folha A4',confidence:.94,
+  metrics:{paperRatio:ratio,contrastThreshold:bestT,topResidual:upper.dispersion,bottomResidual:lower.dispersion}};
+}
+
 function documentCorners(canvas){
  if(!canvas||canvas.width<180||canvas.height<210) return null;
+ const otsu=detectOtsuSheet(canvas);if(otsu)return otsu;
  const W=Math.min(480,canvas.width),H=Math.round(canvas.height*W/canvas.width);
  if(H<200||H>950)return null;
  const c=document.createElement("canvas");c.width=W;c.height=H;
@@ -249,5 +326,5 @@ function documentCorners(canvas){
  return {corners:points.map(p=>({x:p.x*canvas.width/W,y:p.y*canvas.height/H})),
    confidence,estimatedTop,method:"bordas A4",metrics:{area:normalizedArea,ratio,marginContrast:paper-bg}};
 }
-window.LuminaAutoA4={detect:documentCorners,version:"2026-auto-1"};
+window.LuminaAutoA4={detect:documentCorners,detectOtsuSheet,version:"2026-photo-A4-v4"};
 })();
