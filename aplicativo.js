@@ -94,6 +94,7 @@ function assessments(d){
     <p><strong>${pending} registro(s) pendentes</strong> e <strong>${verified} confirmado(s)</strong> na escola. Pendentes ficam visíveis somente à coordenação.</p>
     ${notice('Só confirme cada matrícula depois de conferir NOME E TURMA com a lista oficial ATUAL da secretaria. A confirmação permite a visualização pela professora autorizada da turma.','info')}
     ${selected.some(repeated)?notice('Há um nome repetido entre turmas nesta lista. Consulte a secretaria antes de confirmar o registro correspondente.','info'):''}
+    ${pending===0&&verified===d.students.length&&verified>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-all>Visualizar e imprimir todos os QR Codes (${verified})</button></div><p class="intro-note">Arquivo de impressão separado por turma. Abre em nova aba apenas neste computador autenticado.</p>`:''}
     <label for="studentClassFilter"><strong>Escolha uma turma para conferir</strong></label>
     <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
       <option value="">Selecione uma turma</option>${opts}</select>
@@ -178,6 +179,66 @@ async function updateStudentReview(studentId,nextActive,button){
    rosterReviewMessage=nextActive?'Matrícula confirmada e registrada.':'Matrícula devolvida à conferência.';
    render();
  }catch(err){console.warn('Falha na validação',err?.code||err?.message);rosterReviewMessage='Não foi possível salvar. Clique em Atualizar e tente novamente.';render();}
+}
+
+
+function printAllQrCodes(){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const students=loaded.students;
+ if(!students.length||students.some(s=>!s.active||!/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''))){
+  rosterReviewMessage='A impressão geral só pode ser feita quando todas as matrículas estiverem confirmadas e com códigos válidos.';render();return;
+ }
+ if(typeof window.qrcode!=='function'){rosterReviewMessage='O gerador QR não carregou. Atualize o painel e tente novamente.';render();return;}
+ const popup=window.open('','_blank');
+ if(!popup){rosterReviewMessage='O navegador bloqueou a nova aba. Autorize pop-ups para o Painel da Lumina.';render();return;}
+ popup.opener=null;
+ try{
+  let count=0;
+  const classes=loaded.classrooms.slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+  const pages=classes.map(c=>{
+   const classStudents=students.filter(s=>s.classroom_id===c.id)
+        .sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
+   if(!classStudents.length)return '';
+   const labels=classStudents.map(s=>{
+    const qr=window.qrcode(0,'M');
+    qr.addData(`SONIA26|${s.local_reference}|FICHA-V1`,'Byte');
+    qr.make(); count++;
+    return `<article class="label"><div class="label-title">${clean(c.label)} · 2026</div><div class="student-name">${clean(s.display_name)}</div><div class="qr">${qr.createSvgTag({cellSize:4,margin:16,scalable:true})}</div><div class="code">${clean(s.local_reference)}</div></article>`;
+   }).join('');
+   return `<section class="class-section">
+    <header class="class-header"><h2>Turma ${clean(c.label)}</h2><p>${classStudents.length} estudantes • 2026</p></header>
+    <div class="sheet">${labels}</div></section>`;
+  }).join('');
+  if(count!==students.length)throw new Error('Divergência entre estudantes e turmas. A impressão foi cancelada.');
+  const doc=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
+   <title>Lumina • QR Codes das 16 turmas • 2026</title>
+   <style>
+    @page{size:A4;margin:10mm}*{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;color:#163e32;background:#fff;margin:10mm}
+    .controls{margin:0 0 12mm;display:flex;gap:8px;align-items:center}
+    .controls button{background:#163e32;color:white;border:0;padding:10px 18px;border-radius:6px;cursor:pointer}
+    .controls p{font-size:11px;color:#485e54}
+    .class-section{break-before:page;page-break-before:always}
+    .class-section:first-of-type{break-before:auto;page-break-before:auto}
+    .class-header{border-bottom:2px solid #b49a58;display:flex;justify-content:space-between;align-items:end;gap:8px;margin-bottom:5mm;padding-bottom:3mm}
+    .class-header h2{font-size:18px;margin:0}.class-header p{font-size:12px;margin:0}
+    .sheet{display:grid;grid-template-columns:repeat(2,1fr);gap:5mm}
+    .label{border:1px dashed #a6b1aa;border-radius:5px;padding:4mm 3mm;text-align:center;break-inside:avoid;page-break-inside:avoid;height:76mm;display:flex;flex-direction:column;align-items:center}
+    .label-title{font-size:11px;color:#415e52;font-weight:700}
+    .student-name{font-size:12px;font-weight:700;margin:3mm 0;min-height:9mm}
+    .qr{width:44mm;height:44mm;margin:auto;display:flex;align-items:center;justify-content:center}
+    .qr svg{width:100%;height:100%}
+    .code{font-family:monospace;font-size:11px;letter-spacing:.3px;margin-top:3mm;color:#273a32}
+    @media print{.controls{display:none}body{margin:0}}
+   </style></head><body>
+   <div class="controls"><button type="button" onclick="window.print()">Imprimir ou salvar em PDF</button>
+    <p>Uso interno. ${count} QR Codes divididos por turma. Os símbolos codificam apenas identificadores.</p></div>
+   ${pages}</body></html>`;
+  popup.document.open();popup.document.write(doc);popup.document.close();popup.focus();
+ }catch(err){
+  popup.close();console.warn('Falha ao montar etiquetas',err?.message);
+  rosterReviewMessage='Falha ao preparar a impressão geral. Nenhum cadastro foi alterado. Use impressão por turma ou atualize o painel.';render();
+ }
 }
 
 function printQrCodes(classroomId){
@@ -391,7 +452,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
