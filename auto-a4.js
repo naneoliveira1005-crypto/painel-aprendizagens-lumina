@@ -60,7 +60,22 @@ function headerCorners(canvas,W,H,rgba){
  const line=fitLine(topSamples,1);
  if(!line||line.n<7||Math.abs(line.a)>.28)return null;
  const width=xR-xL;
- let pageHeight=width*(841.8897637795277/595.2755905511812);
+ let qrStretch=1;
+ // A forma impressa do QR é quadrada. Se a câmera distorce a foto na vertical,
+ // o QR permite medir essa distorção sem clicar em bordas ou depender da cor da mesa.
+ try{
+  if(typeof window.jsQR==='function'){
+   const result=window.jsQR(new Uint8ClampedArray(rgba),W,H,{inversionAttempts:'dontInvert'});
+   if(result&&/^SONIA26\|SON-26-[A-F0-9]{12}\|FICHA-V1$/.test(result.data||'')){
+    const v=result.location;
+    const side=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
+    const sx=(side(v.topLeftCorner,v.topRightCorner)+side(v.bottomLeftCorner,v.bottomRightCorner))/2;
+    const sy=(side(v.topLeftCorner,v.bottomLeftCorner)+side(v.topRightCorner,v.bottomRightCorner))/2;
+    if(sx>15&&sy>15)qrStretch=clamp(sy/sx,.78,1.35);
+   }
+  }
+ }catch(_err){ /* QR ainda pode ser lido pelo detector nativo no leitor principal. */ }
+ let pageHeight=width*(841.8897637795277/595.2755905511812)*qrStretch;
  const yHead=line.a*(xL+xR)/2+line.b;
  // O rodapé fica próximo à última linha escrita do formulário.
  // Usa conteúdo impresso para estimar o comprimento da folha mesmo sobre mesa branca.
@@ -89,7 +104,7 @@ function headerCorners(canvas,W,H,rgba){
  if(width<W*.38||width>W*1.03||pageHeight<H*.38||
    corners.some(p=>p.x<-W*.12||p.x>W*1.12||p.y<-H*.10||p.y>H*1.12))return null;
  return {corners:corners.map(p=>({x:p.x*canvas.width/W,y:p.y*canvas.height/H})),
-  method:"cabeçalho escuro",confidence:.71,metrics:{headWidth:width/W,topSlope:line.a}};
+  method:"cabeçalho escuro + escala QR",confidence:.74,metrics:{headWidth:width/W,topSlope:line.a,qrStretch}};
 }
 
 function documentCorners(canvas){
