@@ -304,7 +304,7 @@ function batches(d){
  return `${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A importação oficial continua bloqueada até concluir os testes de reconhecimento, vinculação e permissões.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>QR Code por estudante, reconhecimento dos X, processamento em lote e revisão das exceções.</p><div class="buttonrow"><button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261108-qr-local" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p></div>
  ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Linhas provisórias acessíveis neste perfil: ${d.importRows.length}. Não representam avaliações publicadas.</p>`:''}</div>`:''}
- <div class="card"><h2>Conferência de CSV local</h2><p>Selecione um CSV exportado pelo leitor. O arquivo será analisado somente no seu navegador, sem upload.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">A gravação definitiva no banco não está habilitada nesta prévia. Nenhum botão aqui publica resultados.</p></div>`;
+ <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados.</p></div>`;
 }
 function team(d){
  if(role==='teacher') return `<div class="card"><h2>Minha autorização</h2><p>Você pode consultar as turmas vinculadas ao seu perfil. A coordenação confirma vínculos e altera permissões.</p>${notice('Se alguma turma não aparecer, procure a coordenação pedagógica. Não compartilhe senha nem CPF.','info')}</div>`;
@@ -312,24 +312,103 @@ function team(d){
  const rows=d.staff.map(s=>{const turmas=(d.staffLinks||[]).filter(x=>x.staff_id===s.id).map(x=>d.classrooms.find(c=>c.id===x.classroom_id)?.label).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR')).join(', ')||'A definir';return `<tr><td>${clean(s.full_name)}<div class="intro-note">Turmas: ${clean(turmas)}</div></td><td>${clean(plannedName[s.planned_role]||s.planned_role)}</td><td>${s.email?clean(s.email):'<span class="chip warn">Pendente</span>'}</td><td>${chip(s.status)}</td></tr>`;}).join('');
  return `<div class="card"><h2>Pré-cadastro de profissionais</h2><p>A equipe está em conferência. Os nomes e e-mails exibidos dependem da versão aprovada pela escola.</p><div class="tablewrap"><table><thead><tr><th>Profissional</th><th>Função</th><th>E-mail</th><th>Acesso</th></tr></thead><tbody>${rows||'<tr><td colspan="4">O cadastro da equipe ainda não foi liberado.</td></tr>'}</tbody></table></div></div>${notice('<strong>Priscila já tem acesso ativo.</strong> Os convites das professoras e da direção ainda não foram enviados. A ativação exige e-mails confirmados, aprovação dos vínculos e testes com contas reais. CPF não é senha; a futura entrada por CPF precisa de serviço protegido, sem revelar dados pessoais.','info')}`;
 }
+function checkReaderCSV(csvText, authorizedStudents=[], classrooms=[], checkRoster=false){
+ const lines=parseDelimited(String(csvText||'').replace(/^\uFEFF/,''),';');
+ if(!lines.length)throw new Error('O CSV está vazio.');
+ const columns=lines[0].map(h=>h.trim().toLowerCase());const ix={};
+ columns.forEach((h,i)=>{if(!(h in ix))ix[h]=i;});
+ const needed=['codigo','hipotese','leitura','memoria','narrativo',...Array.from({length:7},(_,i)=>'m'+(i+1))];
+ if(!needed.every(h=>h in ix))throw new Error('Este CSV não contém todas as colunas esperadas pelo leitor V5.');
+ const codeMap=new Map();
+ for(const s of authorizedStudents){
+   const code=String(s.local_reference||'').trim().toUpperCase();
+   if(!code)continue;
+   if(!codeMap.has(code))codeMap.set(code,[]);
+   codeMap.get(code).push(s);
+ }
+ const classroomMap=new Map(classrooms.map(c=>[c.id,c.label]));
+ const seen=new Set();const rows=[];const tallies={total:0,ready:0,review:0,repeated:0,unknown:0};
+ for(const source of lines.slice(1)){
+   if(!source.some(v=>String(v).trim()))continue;
+   tallies.total++;
+   const get=k=>String(source[ix[k]]||'').trim();
+   const code=get('codigo').toUpperCase();
+   const reading=get('leitura').split('|').map(s=>s.trim()).filter(Boolean);
+   const invalidReading=reading.some(s=>!/^L[1-7]$/.test(s))||new Set(reading).size!==reading.length;
+   const formatOK=source.length===columns.length&&/^SON-26-[A-F0-9]{12}$/.test(code)&&
+     /^H[1-5]$/.test(get('hipotese'))&&/^T1[012]$/.test(get('memoria'))&&
+     /^T2[012]$/.test(get('narrativo'))&&!invalidReading&&
+     [1,2,3,4,5,6,7].every(i=>new RegExp('^M'+i+'_(?:A|P|N|NO)$').test(get('m'+i)));
+   const repeated=seen.has(code);seen.add(code);
+   const matches=checkRoster?codeMap.get(code)||[]:[];
+   let status='';
+   if(repeated){status='Código repetido no CSV';tallies.repeated++;}
+   else if(!formatOK)status='Código ou marcações inválidos';
+   else if(checkRoster&&matches.length===0){status='QR não localizado nas matrículas autorizadas';tallies.unknown++;}
+   else if(checkRoster&&matches.length!==1)status='QR vinculado a mais de uma matrícula';
+   else if(checkRoster&&!matches[0].active)status='Matrícula sem confirmação ativa';
+   else status=checkRoster?'Apta para conferência pedagógica':'Formato válido, sem vínculo consultado';
+   const ok=checkRoster?status==='Apta para conferência pedagógica':status==='Formato válido, sem vínculo consultado';
+   if(ok)tallies.ready++;else tallies.review++;
+   rows.push({code,status,ok,name:checkRoster&&matches.length===1?String(matches[0].display_name||''):'',
+     classroom:checkRoster&&matches.length===1?String(classroomMap.get(matches[0].classroom_id)||'—'):'',
+     source:get('arquivo')});
+ }
+ return {tallies,rows,checkedRoster:checkRoster};
+}
 function reviewCSV(file){
  const area=$('csvReport');if(!area||!file)return;
- if(file.size>2_000_000){area.textContent='Arquivo muito grande para esta prévia. Use um CSV de teste menor.';return}
- const reader=new FileReader();reader.onload=()=>{
-  const str=String(reader.result||'').replace(/^\uFEFF/,'');
-  const lines=parseDelimited(str,';');if(!lines.length){area.textContent='CSV vazio.';return}
-  const headers=lines[0].map(h=>h.trim().toLowerCase());const ix={};headers.forEach((h,i)=>ix[h]=i);
-  if(!['codigo','hipotese','leitura','memoria','narrativo','m1','m2','m3','m4','m5','m6','m7'].every(h=>h in ix)){
-   area.textContent='Este CSV não possui todas as colunas esperadas pelo leitor Lumina V5.';return;
-  }
-  let valid=0,invalid=0,duplicates=0;const seen=new Set();
-  for(const row of lines.slice(1)){if(!row.some(v=>v.trim()))continue;const code=String(row[ix.codigo]||'').trim().toUpperCase();const unique=!seen.has(code);seen.add(code);
-   const complete=/^SON-26-[A-F0-9]{12}$/.test(code)&&/^H[1-5]$/.test(row[ix.hipotese]||'')&&/^T1[012]$/.test(row[ix.memoria]||'')&&/^T2[012]$/.test(row[ix.narrativo]||'')&&[1,2,3,4,5,6,7].every(i=>new RegExp('^M'+i+'_(A|P|N|NO)$').test(row[ix['m'+i]]||''));
-   if(!unique)duplicates++;
-   if(complete&&unique)valid++;else invalid++;
-  }
-  area.textContent=`Análise local concluída.\nFichas com formato válido: ${valid}\nFichas com pendências: ${invalid}\nQR Codes repetidos: ${duplicates}\nNenhuma informação foi enviada ao Supabase.`;
- };reader.onerror=()=>area.textContent='Não foi possível ler o arquivo local.';reader.readAsText(file,'utf-8');
+ if(file.size>2_000_000){area.textContent='Arquivo muito grande. Separe o lote em arquivos CSV menores.';return;}
+ const startedMode=mode,startedUser=profile?.user_id;
+ area.textContent='Conferindo o CSV no navegador...';
+ const reader=new FileReader();
+ reader.onload=()=>{
+   if(mode!==startedMode||profile?.user_id!==startedUser)return; // Evita expor conferência de sessão anterior.
+   const liveAdmin=mode==='live'&&role==='pedagogical_admin'&&!!profile;
+   const students=liveAdmin?loaded.students:[];
+   if(liveAdmin&&(!students.length||!loaded.classrooms.length)){
+     area.textContent='Não foi possível conferir o cadastro protegido. Clique em Atualizar e selecione o CSV novamente.';return;
+   }
+   try{
+     const outcome=checkReaderCSV(String(reader.result||''),students,liveAdmin?loaded.classrooms:[],liveAdmin);
+     const {tallies,rows}=outcome;
+     area.replaceChildren();
+     const heading=document.createElement('p');heading.style.fontWeight='700';
+     heading.textContent=liveAdmin?'Conferência QR × matrícula (acesso da coordenação)':'Conferência do formato do CSV (demonstração/sem vínculo)';
+     area.appendChild(heading);
+     const stats=document.createElement('p');
+     stats.textContent='Fichas examinadas: '+tallies.total+' | '+(liveAdmin?'Correspondências válidas: ':'Formato válido: ')+tallies.ready+' | Para revisar: '+tallies.review+' | Códigos repetidos: '+tallies.repeated;
+     area.appendChild(stats);
+     if(liveAdmin){
+       const banner=document.createElement('p');
+       banner.textContent='O cruzamento usa as matrículas autorizadas do banco. Não envia o CSV nem publica resultados. “Apta” significa apenas que QR e campos técnicos foram encontrados: a professora ainda deve validar o conteúdo pedagógico.';
+       area.appendChild(banner);
+     }else{
+       const info=document.createElement('p');info.textContent='Entre com a conta da coordenação para conferir a matrícula ligada a cada QR. Nenhum cadastro real é mostrado aqui.';area.appendChild(info);
+     }
+     const subset=rows.filter(r=>!r.ok);
+     const shown=subset.length?subset.slice(0,70):rows.slice(0,12);
+     if(shown.length){
+       const wrap=document.createElement('div');wrap.className='tablewrap';
+       const table=document.createElement('table');const thead=document.createElement('thead');const tr=document.createElement('tr');
+       for(const column of ['Código QR','Turma','Estudante','Situação']){const cell=document.createElement('th');cell.textContent=column;tr.appendChild(cell);}
+       thead.appendChild(tr);table.appendChild(thead);
+       const body=document.createElement('tbody');
+       for(const item of shown){
+         const row=document.createElement('tr');
+         for(const value of [item.code||'—',liveAdmin?item.classroom:'—',liveAdmin?item.name:'—',item.status]){
+           const cell=document.createElement('td');cell.textContent=value;row.appendChild(cell);
+         }
+         body.appendChild(row);
+       }
+       table.appendChild(body);wrap.appendChild(table);area.appendChild(wrap);
+       if(subset.length>shown.length){const note=document.createElement('p');note.textContent='Exibindo as primeiras '+shown.length+' pendências. Divida o lote e reconfira as demais.';area.appendChild(note);}
+     }
+     const footer=document.createElement('p');footer.textContent='Esta é uma conferência local, sem gravação no banco. Não substitui a revisão pedagógica nem o teste de impressão/fotografia.';area.appendChild(footer);
+   }catch(err){area.textContent=err?.message||'Não foi possível interpretar o CSV.';}
+ };
+ reader.onerror=()=>area.textContent='Não foi possível ler o arquivo local.';
+ reader.readAsText(file,'utf-8');
 }
 function parseDelimited(text,delimiter){
  const rows=[];let row=[],field='',quoted=false;
