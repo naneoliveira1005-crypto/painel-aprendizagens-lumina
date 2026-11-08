@@ -587,8 +587,8 @@ async function refreshLive(){
  loaded={classrooms,cycles,students,results:official,staff,staffLinks,batches,importRows};
  render();
 }
-function enterDemo(){mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
-function exitDemo(){mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
+function enterDemo(){pilotCandidate=null;pilotStageMessage='';mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
+function exitDemo(){pilotCandidate=null;pilotStageMessage='';loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
 // A pessoa convidada configura sua própria senha após a confirmação do Supabase.
 const invitationFlow = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type');
 let changingPassword = invitationFlow === 'invite' || invitationFlow === 'recovery';
