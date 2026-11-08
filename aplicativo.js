@@ -87,7 +87,7 @@ function assessments(d){
    const tableRows=selected.map((s,i)=>{
     const duplicate=repeated(s);
     const status=duplicate?'<span class="chip warn">Nome em duas turmas</span>':s.active?'<span class="chip">Conferido</span>':'<span class="chip warn">A conferir</span>';
-    const action=duplicate?'<span class="intro-note">Aguardar secretaria</span>':`<button class="smallbtn" type="button" data-verify-student="${clean(s.id)}" data-next-active="${s.active?'false':'true'}">${s.active?'Reabrir conferência':'Confirmar matrícula'}</button>`;
+    const action=duplicate?'<span class="intro-note">Aguardar secretaria</span>':`<button class="smallbtn" type="button" data-verify-student="${clean(s.id)}" data-next-active="${s.active?'false':'true'}">${s.active?'Reabrir conferência':'Confirmar matrícula'}</button> ${s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')?`<button class="smallbtn" type="button" data-ficha-student="${clean(s.id)}">Ver fichas</button>`:''}`;
     return `<tr><td>${i+1}</td><td>${clean(s.display_name)}</td><td>${status}</td><td>${action}</td></tr>`;
    }).join('');
    studentSection=`<div class="card"><h2>Pré-cadastro de estudantes — 2026</h2>
@@ -106,8 +106,8 @@ function assessments(d){
     <p class="intro-note">Use a confirmação da turma inteira somente se TODOS os nomes e a turma estiverem corretos na lista oficial atual da secretaria. Se houver dúvida, confirme individualmente.</p>
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
-    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-class="${clean(selectedRosterClass)}">Visualizar e imprimir QR Codes (${printableCodes})</button></div>`:''}
-    <p class="intro-note">QR Codes disponíveis apenas para matrículas confirmadas, na área restrita da coordenação. O envio de fichas e os resultados oficiais ainda não estão liberados.</p></div>`;
+    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-class="${clean(selectedRosterClass)}">Visualizar e imprimir QR Codes (${printableCodes})</button> <button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Preparar atividades LP + Matemática + ficha X (${printableCodes} estudantes)</button></div>`:''}
+    <p class="intro-note">Cada estudante tem 3 páginas: Língua Portuguesa, Matemática e ficha integrada de X. Faça primeiro uma prévia individual, conferindo a impressão A4 e a leitura de X. Apenas a ficha de X deve ser digitalizada no leitor V5. O envio e a publicação de resultados continuam desabilitados.</p></div>`;
 
  } else {
    const activeStudents=d.students.filter(s=>s.active);
@@ -181,6 +181,18 @@ async function updateStudentReview(studentId,nextActive,button){
  }catch(err){console.warn('Falha na validação',err?.code||err?.message);rosterReviewMessage='Não foi possível salvar. Clique em Atualizar e tente novamente.';render();}
 }
 
+
+
+function openFichas(classroomId,studentId){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const c=loaded.classrooms.find(x=>x.id===classroomId);
+ const candidates=loaded.students.filter(s=>s.classroom_id===classroomId && s.active && /^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
+ const students=studentId?candidates.filter(s=>s.id===studentId):candidates;
+ if(!c||!students.length){rosterReviewMessage='Não há estudantes confirmados com QR válido para preparar estas fichas.';render();return;}
+ if(!window.LuminaFichas?.printSet){rosterReviewMessage='As fichas ainda não carregaram. Atualize o navegador e tente novamente.';render();return;}
+ try{window.LuminaFichas.printSet(students,c)}
+ catch(err){console.warn('Falha ao preparar fichas de avaliação',err?.message);rosterReviewMessage='Não foi possível abrir as fichas: '+String(err?.message||'erro de impressão');render();}
+}
 
 function printAllQrCodes(){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
@@ -452,7 +464,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
