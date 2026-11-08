@@ -13,6 +13,7 @@ const plannedName = {teacher:'Professora',pedagogical_admin:'Coordenadora',direc
 let api=null;
 let mode='guest', currentPage='visao', role='pedagogical_admin', profile=null;
 let selectedRosterClass='';
+let rosterReviewMessage='';
 let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
  ['1º A','matutino'],['1º B','vespertino'],['2º A','matutino'],['2º B','matutino'],['2º C','vespertino'],
@@ -78,15 +79,27 @@ function assessments(d){
    const verified=d.students.filter(s=>s.active===true).length;
    const opts=d.classrooms.map(c=>`<option value="${clean(c.id)}" ${selectedRosterClass===c.id?'selected':''}>${clean(c.label)} — ${clean(shiftLabel[c.shift]||c.shift)}</option>`).join('');
    const selected=d.students.filter(s=>s.classroom_id===selectedRosterClass).sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
-   const tableRows=selected.map((s,i)=>`<tr><td>${i+1}</td><td>${clean(s.display_name)}</td><td>${s.active?'<span class="chip">Conferido</span>':'<span class="chip warn">A conferir</span>'}</td></tr>`).join('');
+
+   const classPending=selected.filter(s=>!s.active).length;
+   const repeated=s=>d.students.some(t=>t.id!==s.id&&t.classroom_id!==s.classroom_id&&t.display_name.trim().toLocaleUpperCase('pt-BR')===s.display_name.trim().toLocaleUpperCase('pt-BR'));
+   const tableRows=selected.map((s,i)=>{
+    const duplicate=repeated(s);
+    const status=duplicate?'<span class="chip warn">Nome em duas turmas</span>':s.active?'<span class="chip">Conferido</span>':'<span class="chip warn">A conferir</span>';
+    const action=duplicate?'<span class="intro-note">Aguardar secretaria</span>':`<button class="smallbtn" type="button" data-verify-student="${clean(s.id)}" data-next-active="${s.active?'false':'true'}">${s.active?'Reabrir conferência':'Confirmar matrícula'}</button>`;
+    return `<tr><td>${i+1}</td><td>${clean(s.display_name)}</td><td>${status}</td><td>${action}</td></tr>`;
+   }).join('');
    studentSection=`<div class="card"><h2>Pré-cadastro de estudantes — 2026</h2>
-     <p><strong>${pending} registro(s) pendentes</strong> e <strong>${verified} confirmado(s)</strong> no banco da escola. Todos os registros pendentes são visíveis somente à coordenação pedagógica, não às professoras.</p>
-     ${notice('Confira cada turma com a secretaria. As listas em PDF foram impressas em maio de 2026 e podem conter matrículas desatualizadas. Há um possível nome repetido entre 5º A e 5º B. Nenhuma matrícula pendente é considerada validada automaticamente.','info')}
-     <label for="studentClassFilter"><strong>Escolha uma turma para conferir</strong></label>
-     <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
-       <option value="">Selecione uma turma</option>${opts}</select>
-     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th></tr></thead><tbody>${tableRows||'<tr><td colspan="3">Selecione uma turma para consultar seus registros.</td></tr>'}</tbody></table></div>
-     <p class="intro-note">Os nomes foram registrados sem CPF, INEP, dados de raça ou informações de saúde. A validação e os QR Codes serão preparados após a conferência dos cadastros.</p></div>`;
+    <p><strong>${pending} registro(s) pendentes</strong> e <strong>${verified} confirmado(s)</strong> na escola. Pendentes ficam visíveis somente à coordenação.</p>
+    ${notice('Só confirme cada matrícula depois de conferir NOME E TURMA com a lista oficial ATUAL da secretaria. A confirmação permite a visualização pela professora autorizada da turma.','info')}
+    ${notice('O nome repetido entre 5º A e 5º B está bloqueado até a secretaria identificar a turma correta. Não exclua nenhum registro.','info')}
+    <label for="studentClassFilter"><strong>Escolha uma turma para conferir</strong></label>
+    <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
+      <option value="">Selecione uma turma</option>${opts}</select>
+    <p class="intro-note">Nesta turma: ${selected.length} registros; ${classPending} ainda pendentes.</p>
+    <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
+    <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
+    <p class="intro-note">Os QR Codes e os resultados oficiais continuam bloqueados até validação específica.</p></div>`;
+
  } else {
    const activeStudents=d.students.filter(s=>s.active);
    const rows=activeStudents.map(s=>`<tr><td>${clean(s.display_name)}</td><td>${clean(d.classrooms.find(c=>c.id===s.classroom_id)?.label||'')}</td><td>${d.results.filter(r=>r.student_id===s.id).length}</td></tr>`).join('');
@@ -114,6 +127,25 @@ function assessments(d){
  <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. As listas recebidas estão em pré-cadastro aguardando conferência; os QR Codes e o vínculo das fichas ainda precisam ser preparados antes dos lançamentos reais.</p>
  <p class="intro-note">Fluxo previsto: aplicação e marcação da ficha → envio protegido do arquivo → conferência pedagógica → validação → visualização consolidada. A etapa de envio e publicação ainda não está habilitada nesta versão.</p></div>
  ${studentSection}`;
+}
+
+async function updateStudentReview(studentId,nextActive,button){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const s=loaded.students.find(x=>x.id===studentId);
+ if(!s||s.active===nextActive)return;
+ const isDuplicate=loaded.students.some(x=>x.id!==s.id&&x.classroom_id!==s.classroom_id&&x.display_name.trim().toLocaleUpperCase('pt-BR')===s.display_name.trim().toLocaleUpperCase('pt-BR'));
+ if(isDuplicate){rosterReviewMessage='Esse nome aparece em duas turmas. Solicite confirmação da secretaria.';render();return;}
+ const turma=loaded.classrooms.find(c=>c.id===s.classroom_id)?.label||'turma selecionada';
+ const msg=nextActive?`Confirmar que ${s.display_name} está na lista OFICIAL ATUAL do ${turma}? A matrícula ficará visível às professoras autorizadas.`:`Reabrir a conferência de ${s.display_name} (${turma})? A matrícula deixará de aparecer para as professoras.`;
+ if(!window.confirm(msg))return;
+ button.disabled=true;button.textContent='Salvando...';
+ try{
+   const {data,error}=await api.from('students').update({active:nextActive}).eq('id',studentId).eq('classroom_id',s.classroom_id).eq('active',!nextActive).select('id,active').maybeSingle();
+   if(error||!data||data.active!==nextActive)throw error||new Error('Nenhuma alteração realizada');
+   s.active=data.active;
+   rosterReviewMessage=nextActive?'Matrícula confirmada e registrada.':'Matrícula devolvida à conferência.';
+   render();
+ }catch(err){console.warn('Falha na validação',err?.code||err?.message);rosterReviewMessage='Não foi possível salvar. Clique em Atualizar e tente novamente.';render();}
 }
 function batches(d){
  const admin=role==='pedagogical_admin';
@@ -281,7 +313,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
