@@ -3,7 +3,7 @@
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Painel de Aprendizagens — Leitura em lote (validação local)</title>
 <style>
-:root{--green:#153e34;--green2:#28634e;--mint:#ecf4f0;--gold:#b49a58;--ink:#20332e;--muted:#5e746b;--line:#dbe6e1;--bg:#f5f7f5;--red:#a13636;--yellow:#946d21;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}h1,h2,h3,p{margin-top:0}.pagehead{background:var(--green);color:#fff;padding:25px max(20px,calc((100vw - 1220px)/2));border-bottom:5px solid var(--gold)}.pagehead .brand{letter-spacing:2px;text-transform:uppercase;opacity:.8;font-size:11px;font-weight:700}.pagehead h1{font-size:clamp(23px,3vw,33px);margin:8px 0}.pagehead p{margin:0;color:#d6e7df}.wrap{max-width:1220px;margin:25px auto;padding:0 16px 40px}.note{border:1px solid #e6d7b2;background:#fffdf7;border-radius:12px;padding:13px 16px;font-size:14px;line-height:1.5;margin-bottom:19px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:0 3px 12px rgba(25,65,50,.03);min-width:0}.panel h2{font-size:19px;margin-bottom:6px}.help{font-size:13px;color:var(--muted);line-height:1.5}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:9px;background:var(--green2);color:white;padding:11px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px}button.alt{border:1px solid var(--green2);color:var(--green2);background:white}button:disabled{opacity:.46;cursor:not-allowed}input[type=file]{max-width:100%;border:1px dashed #b7c8bf;padding:14px;background:#f9fcfa;border-radius:10px;width:100%}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:19px 0}.metric{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px}.metric b{display:block;font-size:27px;color:var(--green)}.metric span{font-size:12px;color:var(--muted)}progress{width:100%;height:12px;accent-color:var(--green2)}.long{grid-column:1/-1}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:15px 0}.toolbar select{width:auto}.scroll{overflow:auto;border:1px solid var(--line);border-radius:11px;max-height:410px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e5ece8;white-space:nowrap}th{position:sticky;top:0;background:#f0f5f1;z-index:1;font-size:12px;color:#4c675b}tr:hover td{background:#f7faf8}tbody tr{cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:700;font-size:11px}.ok{background:#e1f3e8;color:#1e6944}.err{background:#fff2dc;color:#875e12}.pending{background:#eff1f0;color:#5f6f67}.selected td{background:#e7f1ec!important}.review{display:grid;grid-template-columns:1fr 1fr;gap:20px}.preview{width:100%;max-height:610px;object-fit:contain;background:#f7f7f7;border:1px solid var(--line);border-radius:9px;display:block}.field{margin:12px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field select{border:1px solid #bacdc3;border-radius:9px;padding:9px;max-width:100%;width:100%;background:white;color:var(--ink)}.hint{font-size:12px;color:var(--muted)}.message{margin-top:10px;font-size:13px;min-height:20px}.checkboxes{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}.checkboxes label{font-size:12px}.footer{font-size:12px;color:#63746e;margin-top:23px}#reviewMessage{white-space:pre-line}.hide{display:none!important}@media(max-width:860px){.grid,.review{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.panel{padding:16px}}@media(max-width:480px){.metrics{grid-template-columns:repeat(2,1fr)}}
+:root{--green:#153e34;--green2:#28634e;--mint:#ecf4f0;--gold:#b49a58;--ink:#20332e;--muted:#5e746b;--line:#dbe6e1;--bg:#f5f7f5;--red:#a13636;--yellow:#946d21;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}h1,h2,h3,p{margin-top:0}.pagehead{background:var(--green);color:#fff;padding:25px max(20px,calc((100vw - 1220px)/2));border-bottom:5px solid var(--gold)}.pagehead .brand{letter-spacing:2px;text-transform:uppercase;opacity:.8;font-size:11px;font-weight:700}.pagehead h1{font-size:clamp(23px,3vw,33px);margin:8px 0}.pagehead p{margin:0;color:#d6e7df}.wrap{max-width:1220px;margin:25px auto;padding:0 16px 40px}.note{border:1px solid #e6d7b2;background:#fffdf7;border-radius:12px;padding:13px 16px;font-size:14px;line-height:1.5;margin-bottom:19px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:0 3px 12px rgba(25,65,50,.03);min-width:0}.panel h2{font-size:19px;margin-bottom:6px}.help{font-size:13px;color:var(--muted);line-height:1.5}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:9px;background:var(--green2);color:white;padding:11px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px}button.alt{border:1px solid var(--green2);color:var(--green2);background:white}button:disabled{opacity:.46;cursor:not-allowed}input[type=file]{max-width:100%;border:1px dashed #b7c8bf;padding:14px;background:#f9fcfa;border-radius:10px;width:100%}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:19px 0}.metric{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px}.metric b{display:block;font-size:27px;color:var(--green)}.metric span{font-size:12px;color:var(--muted)}progress{width:100%;height:12px;accent-color:var(--green2)}.long{grid-column:1/-1}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:15px 0}.toolbar select{width:auto}.scroll{overflow:auto;border:1px solid var(--line);border-radius:11px;max-height:410px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e5ece8;white-space:nowrap}th{position:sticky;top:0;background:#f0f5f1;z-index:1;font-size:12px;color:#4c675b}tr:hover td{background:#f7faf8}tbody tr{cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:700;font-size:11px}.ok{background:#e1f3e8;color:#1e6944}.err{background:#fff2dc;color:#875e12}.pending{background:#eff1f0;color:#5f6f67}.selected td{background:#e7f1ec!important}.review{display:grid;grid-template-columns:1fr 1fr;gap:20px}.preview{width:auto;height:auto;max-width:100%;max-height:650px;background:#f7f7f7;border:1px solid var(--line);border-radius:9px;display:block;margin:0 auto;cursor:crosshair} .crop-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px} .crop-actions button{font-size:12px} .crop-help{font-size:13px;background:#edf4ef;border-radius:9px;padding:12px;margin:9px 0;line-height:1.55}.field{margin:12px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field select{border:1px solid #bacdc3;border-radius:9px;padding:9px;max-width:100%;width:100%;background:white;color:var(--ink)}.hint{font-size:12px;color:var(--muted)}.message{margin-top:10px;font-size:13px;min-height:20px}.checkboxes{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}.checkboxes label{font-size:12px}.footer{font-size:12px;color:#63746e;margin-top:23px}#reviewMessage{white-space:pre-line}.hide{display:none!important}@media(max-width:860px){.grid,.review{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.panel{padding:16px}}@media(max-width:480px){.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 <script src="jsqr-fallback.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -18,7 +18,13 @@
 </div>
 <div class="metrics"><div class="metric"><b id="countTotal">0</b><span>Fichas carregadas</span></div><div class="metric"><b id="countDone">0</b><span>Analisadas</span></div><div class="metric"><b id="countReady">0</b><span>Prontas para validar</span></div><div class="metric"><b id="countReview">0</b><span>Precisam de revisão</span></div></div>
 <section class="panel"><h2>3. Conferência de exceções</h2><p class="help">Se aparecer <b>“1 com pendência”</b>, <strong>clique na linha da ficha</strong> para descobrir o motivo exato. Confira o quadro <b>Observação</b> e o painel <b>Revisar ficha selecionada</b>. Não consolide uma ficha enquanto houver pendências de leitura.</p><p class="help">As causas podem ser QR não identificado, foto fora da proporção A4, quadradinhos desalinhados ou marcações não reconhecidas. A correção depende do motivo exibido.</p><div class="toolbar"><label for="filter">Mostrar</label><select id="filter"><option value="all">Todas</option><option value="review">Somente revisar</option><option value="ready">Somente prontas</option><option value="consolidated">Consolidadas</option></select></div><div class="scroll"><table><thead><tr><th>#</th><th>Arquivo / página</th><th>Identificação QR</th><th>Situação</th><th>Observação</th></tr></thead><tbody id="rows"><tr><td colspan="5" style="color:#6a8074">Nenhuma ficha carregada.</td></tr></tbody></table></div></section>
-<section class="panel hide" id="editPanel" style="margin-top:18px"><h2>4. Revisar ficha selecionada</h2><div class="review"><div><canvas id="preview" class="preview" width="595" height="842" aria-label="Imagem da ficha selecionada"></canvas><p class="help">Confira a foto, o QR e as marcações. <strong>Se a foto mostrar a mesa em volta da folha, recorte a imagem pelas quatro bordas do papel e carregue novamente.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se não houver QR legível, use apenas códigos fictícios. Em uso real, a vinculação manual deverá ser confirmada no cadastro protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><div class="buttons"><button id="saveReview">Salvar revisão</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
+<section class="panel hide" id="editPanel" style="margin-top:18px"><h2>4. Revisar ficha selecionada</h2><div class="review"><div><canvas id="preview" class="preview" width="595" height="842" aria-label="Fotografia da ficha e indicação dos quatro cantos da folha"></canvas>
+<div class="crop-actions">
+<button id="startCrop" type="button">Enquadrar folha na foto</button>
+<button id="resetCrop" class="alt hide" type="button">Recomeçar 4 cantos</button>
+<button id="applyCrop" type="button" class="hide">Aplicar enquadramento e reler</button>
+</div>
+<p class="crop-help hide" id="cropHelp" role="status" aria-live="polite">Clique nos quatro cantos da FOLHA de papel na foto, nesta ordem: 1º superior esquerdo; 2º superior direito; 3º inferior direito; 4º inferior esquerdo. Clique na borda do papel, não no quadradinho preto.</p><p class="help">Confira a foto, o QR e as marcações. <strong>Se a foto mostrar a mesa em volta da folha, recorte a imagem pelas quatro bordas do papel e carregue novamente.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se não houver QR legível, use apenas códigos fictícios. Em uso real, a vinculação manual deverá ser confirmada no cadastro protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><div class="buttons"><button id="saveReview">Salvar revisão</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
 <p class="footer">Projeto escolar Lumina • Escola Municipal Sônia Maria Pereira do Nascimento. Protótipo de validação: uso sem identificação de crianças. A leitura QR usa BarcodeDetector ou a biblioteca jsQR local. O contraste do campo de hipótese de escrita foi ajustado com base em variações de resolução das sete páginas do PDF de teste do 2º A e nas três fichas fictícias. A decisão automática deve ser verificada por amostragem antes de qualquer utilização oficial. O PDF é carregado usando biblioteca PDF.js; nenhum resultado é enviado ao Supabase.</p>
 </main>
 <script>
@@ -29,6 +35,7 @@ const M=Array.from({length:7},(_,i)=>['A','P','N','NO'].map(v=>'M'+(i+1)+'_'+v))
 const GROUPS=[['Hipótese de escrita','H',H],['Leitura do texto de memória','T1',T1],['Leitura do texto narrativo','T2',T2],...M.map((keys,i)=>['Matemática · Indicador '+(i+1),'M'+(i+1),keys])];
 const $=id=>document.getElementById(id);
 let queue=[],selectedIndex=-1,processing=false,consolidated=new Map(),seq=0;
+let cropMode=false,cropSource=null,cropPoints=[];
 const localSafeCode=v=>/^(?:SON-26-[A-F0-9]{12}|TESTE-[A-Z0-9-]{2,40})$/i.test(v);
 function tell(msg){$('message').textContent=msg}
 function setCounts(){
@@ -71,7 +78,8 @@ async function enqueueFiles(input){if(processing)return;const files=Array.from(i
 }
 $('files').addEventListener('change',e=>enqueueFiles(e.target));
 function newWorkCanvas(imgW,imgH){const factor=Math.min(1,1900/Math.max(imgW,imgH));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(imgW*factor));c.height=Math.max(1,Math.round(imgH*factor));return c}
-async function renderEntry(entry){
+async function renderEntry(entry,original=false){
+ if(!original&&entry.correctedCanvas)return entry.correctedCanvas;
  if(entry.kind==='pdf'){const pg=await entry.doc.getPage(entry.page);const vp=pg.getViewport({scale:2});const c=newWorkCanvas(vp.width,vp.height);const sv=pg.getViewport({scale:2*(c.width/vp.width)});await pg.render({canvasContext:c.getContext('2d',{willReadFrequently:true}),viewport:sv}).promise;return c;}
  const bitmap=await createImageBitmap(entry.file);const c=newWorkCanvas(bitmap.width,bitmap.height);c.getContext('2d',{willReadFrequently:true}).drawImage(bitmap,0,0,c.width,c.height);bitmap.close();return c;
 }
@@ -239,7 +247,126 @@ const makeSelect=(name,key,options,value)=>{const outer=document.createElement('
  const empty=document.createElement('option');empty.value='';empty.textContent='Não marcado / conferir';sel.append(empty);
  for(const opt of options){const o=document.createElement('option');o.value=opt;o.textContent=LABELS[opt]||opt;sel.append(o);}sel.value=value||'';outer.append(sel);return outer;
 };
-async function selectItem(i){selectedIndex=i;const entry=queue[i];$('editPanel').classList.remove('hide');$('editTitle').textContent=entry.label+' · '+statusLabel(entry.state);
+
+// Enquadramento manual de quatro cantos, feito somente neste navegador.
+// O algoritmo transforma a foto em uma página A4 e nunca modifica resultados oficiais.
+function quadProjection(corners,canvas){
+ if(!Array.isArray(corners)||corners.length!==4)throw new Error('Marque os quatro cantos.');
+ const coords=[[0,0],[1,0],[1,1],[0,1]];
+ const equations=[];
+ for(let i=0;i<4;i++){
+  const [u,v]=coords[i],{x,y}=corners[i];
+  equations.push([u,v,1,0,0,0,-x*u,-x*v,x]);
+  equations.push([0,0,0,u,v,1,-y*u,-y*v,y]);
+ }
+ // Resolve 8 equações para mapear o retângulo A4 à perspectiva da fotografia.
+ for(let k=0;k<8;k++){
+  let pivot=k;
+  for(let j=k+1;j<8;j++)if(Math.abs(equations[j][k])>Math.abs(equations[pivot][k]))pivot=j;
+  if(Math.abs(equations[pivot][k])<1e-8)throw new Error('Cantos inválidos. Recomece e marque a borda da folha.');
+  [equations[k],equations[pivot]]=[equations[pivot],equations[k]];
+  const div=equations[k][k];for(let j=k;j<9;j++)equations[k][j]/=div;
+  for(let i=0;i<8;i++)if(i!==k){
+   const scale=equations[i][k];for(let j=k;j<9;j++)equations[i][j]-=scale*equations[k][j];
+  }
+ }
+ const a=equations.map(r=>r[8]);
+ const signedArea=corners.reduce((sum,p,i)=>{
+  const q=corners[(i+1)%4];return sum+p.x*q.y-q.x*p.y;
+ },0)/2;
+ if(signedArea<=canvas.width*canvas.height*.03)throw new Error('Os quatro cantos precisam contornar a folha inteira em sentido horário.');
+ const w=1191,h=1684;
+ const source=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height);
+ const src=source.data,sw=canvas.width,sh=canvas.height;
+ const result=document.createElement('canvas');result.width=w;result.height=h;
+ const destCtx=result.getContext('2d',{willReadFrequently:true});const out=destCtx.createImageData(w,h),dst=out.data;
+ for(let y=0;y<h;y++){
+  const v=y/(h-1);
+  for(let x=0;x<w;x++){
+   const u=x/(w-1),div=a[6]*u+a[7]*v+1;
+   const dx=(a[0]*u+a[1]*v+a[2])/div,dy=(a[3]*u+a[4]*v+a[5])/div;
+   const di=(y*w+x)*4;
+   if(dx<0||dy<0||dx>=sw-1||dy>=sh-1||!Number.isFinite(dx)||!Number.isFinite(dy)){
+    dst[di]=255;dst[di+1]=255;dst[di+2]=255;dst[di+3]=255;continue;
+   }
+   const xi=dx|0,yi=dy|0,fx=dx-xi,fy=dy-yi;
+   const p=(yi*sw+xi)*4,p2=p+sw*4;
+   for(let ch=0;ch<3;ch++){
+    const c0=src[p+ch]*(1-fx)+src[p+4+ch]*fx;
+    const c1=src[p2+ch]*(1-fx)+src[p2+4+ch]*fx;
+    dst[di+ch]=c0*(1-fy)+c1*fy;
+   }
+   dst[di+3]=255;
+  }
+ }
+ destCtx.putImageData(out,0,0);
+ return result;
+}
+function redrawCropPreview(){
+ if(!cropSource)return;
+ const canvas=$('preview');canvas.width=cropSource.width;canvas.height=cropSource.height;
+ const ctx=canvas.getContext('2d');ctx.drawImage(cropSource,0,0);
+ if(cropPoints.length){
+  ctx.save();ctx.lineWidth=Math.max(3,canvas.width/380);
+  ctx.strokeStyle='#e22d34';ctx.fillStyle='#e22d34';ctx.beginPath();
+  cropPoints.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  if(cropPoints.length===4)ctx.closePath();ctx.stroke();
+  cropPoints.forEach((p,i)=>{
+   ctx.beginPath();ctx.arc(p.x,p.y,Math.max(7,canvas.width/150),0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='white';ctx.font='bold '+Math.max(16,canvas.width/55)+'px Arial';
+   ctx.fillText(String(i+1),p.x+10,p.y-10);ctx.fillStyle='#e22d34';
+  });
+  ctx.restore();
+ }
+ $('applyCrop').classList.toggle('hide',cropPoints.length!==4);
+ $('cropHelp').textContent=cropPoints.length===4?
+  'Quatro cantos marcados. Clique em Aplicar enquadramento e reler. Se a borda estiver errada, use Recomeçar 4 cantos.':
+  'Clique na borda do papel: '+['1º canto superior esquerdo','2º canto superior direito','3º canto inferior direito','4º canto inferior esquerdo'][cropPoints.length]+'.';
+}
+$('startCrop').onclick=async()=>{
+ if(selectedIndex<0)return;
+ const entry=queue[selectedIndex];
+ if(entry.kind!=='img'){tell('Use a fotografia JPG/PNG para enquadrar; PDFs já têm tamanho de página definido.');return;}
+ try{
+  cropSource=await renderEntry(entry,true);cropPoints=[];cropMode=true;
+  $('cropHelp').classList.remove('hide');$('resetCrop').classList.remove('hide');
+  $('startCrop').classList.add('hide');redrawCropPreview();
+  $('reviewMessage').textContent='Marque os quatro cantos externos da folha. Nenhum resultado será salvo.';
+ }catch(err){tell('Não foi possível abrir a fotografia para enquadramento: '+err.message)}
+};
+$('resetCrop').onclick=()=>{if(!cropMode)return;cropPoints=[];redrawCropPreview()};
+$('preview').addEventListener('click',e=>{
+ if(!cropMode||!cropSource||cropPoints.length===4)return;
+ const canvas=$('preview'),rect=canvas.getBoundingClientRect();
+ const x=(e.clientX-rect.left)*canvas.width/rect.width;
+ const y=(e.clientY-rect.top)*canvas.height/rect.height;
+ if(x<0||y<0||x>canvas.width||y>canvas.height)return;
+ cropPoints.push({x,y});redrawCropPreview();
+});
+$('applyCrop').onclick=async()=>{
+ if(!cropMode||selectedIndex<0||cropPoints.length!==4)return;
+ const entry=queue[selectedIndex];
+ const button=$('applyCrop');button.disabled=true;button.textContent='Reenquadrando e relendo...';
+ try{
+  // Deixe a interface mostrar a confirmação antes de processar a imagem.
+  await new Promise(resolve=>setTimeout(resolve,20));
+  const output=quadProjection(cropPoints,cropSource);
+  const scan=getAnswers(output),qr=await readQr(output);
+  entry.correctedCanvas=output;entry.answers=scan.answers;entry.scores=scan.scores;
+  entry.thresholds=scan.thresholds;entry.align=scan.align;entry.code=qr;
+  entry.alignmentWarning=!scan.aligned;entry.shapeWarning=false;
+  entry.state='pending';recalcState(entry);recalcDuplicates();
+  cropMode=false;cropPoints=[];cropSource=null;
+  $('cropHelp').classList.add('hide');$('resetCrop').classList.add('hide');
+  $('applyCrop').classList.add('hide');$('startCrop').classList.remove('hide');
+  renderList();await selectItem(selectedIndex);
+  tell('Foto reenquadrada em A4. Resultado: '+statusLabel(entry.state)+'. '+((entry.issues||[]).join('; ')||'Sem pendências detectadas')+
+    '. Confira o QR e todas as marcações com o original.');
+ }catch(err){
+  $('cropHelp').textContent='Não consegui enquadrar: '+err.message+' Use Recomeçar 4 cantos.';
+ }finally{button.disabled=false;button.textContent='Aplicar enquadramento e reler'}
+};
+async function selectItem(i){cropMode=false;cropSource=null;cropPoints=[];$('cropHelp').classList.add('hide');$('resetCrop').classList.add('hide');$('applyCrop').classList.add('hide');$('startCrop').classList.remove('hide');selectedIndex=i;const entry=queue[i];$('editPanel').classList.remove('hide');$('editTitle').textContent=entry.label+' · '+statusLabel(entry.state);
  $('studentCode').value=entry.code||'';$('reviewMessage').textContent=(entry.issues||[]).join(' · ');$('markDiagnostics').textContent=markSummary(entry);
  const ctr=$('selections');ctr.replaceChildren();for(const [name,key,opts] of GROUPS){ctr.append(makeSelect(name,key,opts,entry.answers?.[key]));}
  const group=document.createElement('div');group.className='field';const lbl=document.createElement('label');lbl.textContent='Habilidades de leitura (marque todas as observadas)';group.append(lbl);const checks=document.createElement('div');checks.className='checkboxes';for(const k of L){const lab=document.createElement('label');const chk=document.createElement('input');chk.type='checkbox';chk.value=k;chk.dataset.reading='1';chk.checked=entry.answers?.L?.includes(k)||false;lab.append(chk,' '+LABELS[k]);checks.append(lab)}group.append(checks);ctr.append(group);
