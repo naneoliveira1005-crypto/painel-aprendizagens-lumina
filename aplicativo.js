@@ -81,6 +81,7 @@ function assessments(d){
    const selected=d.students.filter(s=>s.classroom_id===selectedRosterClass).sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
 
    const classPending=selected.filter(s=>!s.active).length;
+   const printableCodes=selected.filter(s=>s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')).length;
    const repeated=s=>d.students.some(t=>t.id!==s.id&&t.classroom_id!==s.classroom_id&&t.display_name.trim().toLocaleUpperCase('pt-BR')===s.display_name.trim().toLocaleUpperCase('pt-BR'));
    const hasRepeatedName=selected.some(repeated);
    const tableRows=selected.map((s,i)=>{
@@ -104,7 +105,8 @@ function assessments(d){
     <p class="intro-note">Use a confirmação da turma inteira somente se TODOS os nomes e a turma estiverem corretos na lista oficial atual da secretaria. Se houver dúvida, confirme individualmente.</p>
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
-    <p class="intro-note">Os QR Codes e os resultados oficiais continuam bloqueados até validação específica.</p></div>`;
+    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-class="${clean(selectedRosterClass)}">Visualizar e imprimir QR Codes (${printableCodes})</button></div>`:''}
+    <p class="intro-note">QR Codes disponíveis apenas para matrículas confirmadas, na área restrita da coordenação. O envio de fichas e os resultados oficiais ainda não estão liberados.</p></div>`;
 
  } else {
    const activeStudents=d.students.filter(s=>s.active);
@@ -150,10 +152,10 @@ async function verifyRosterClass(classroomId,button){
  button.disabled=true;button.textContent='Registrando conferência...';
  try{
   const ids=pendentes.map(s=>s.id);
-  const {data,error}=await api.from('students').update({active:true}).in('id',ids).eq('classroom_id',classroomId).eq('active',false).select('id,active');
+  const {data,error}=await api.from('students').update({active:true}).in('id',ids).eq('classroom_id',classroomId).eq('active',false).select('id,active,local_reference');
   if(error)throw error;
-  const returned=new Set((data||[]).map(s=>s.id));
-  for(const student of pendentes){if(returned.has(student.id))student.active=true;}
+  const returned=new Map((data||[]).map(s=>[s.id,s]));
+  for(const student of pendentes){const stored=returned.get(student.id);if(stored){student.active=stored.active;student.local_reference=stored.local_reference;}}
   if(returned.size!==ids.length){rosterReviewMessage='Algumas alterações precisam ser reconferidas. Clique em Atualizar.';}
   else{rosterReviewMessage=`Conferência registrada: ${returned.size} matrícula(s) no ${klass.label}.`;}
   render();
@@ -170,13 +172,59 @@ async function updateStudentReview(studentId,nextActive,button){
  if(!window.confirm(msg))return;
  button.disabled=true;button.textContent='Salvando...';
  try{
-   const {data,error}=await api.from('students').update({active:nextActive}).eq('id',studentId).eq('classroom_id',s.classroom_id).eq('active',!nextActive).select('id,active').maybeSingle();
+   const {data,error}=await api.from('students').update({active:nextActive}).eq('id',studentId).eq('classroom_id',s.classroom_id).eq('active',!nextActive).select('id,active,local_reference').maybeSingle();
    if(error||!data||data.active!==nextActive)throw error||new Error('Nenhuma alteração realizada');
-   s.active=data.active;
+   s.active=data.active;s.local_reference=data.local_reference;
    rosterReviewMessage=nextActive?'Matrícula confirmada e registrada.':'Matrícula devolvida à conferência.';
    render();
  }catch(err){console.warn('Falha na validação',err?.code||err?.message);rosterReviewMessage='Não foi possível salvar. Clique em Atualizar e tente novamente.';render();}
 }
+
+function printQrCodes(classroomId){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const klass=loaded.classrooms.find(c=>c.id===classroomId);
+ const list=loaded.students.filter(s=>s.classroom_id===classroomId&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''))
+  .sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
+ if(!klass||!list.length){rosterReviewMessage='Nenhum QR Code de matrícula confirmada nesta turma.';render();return;}
+ if(typeof window.qrcode!=='function'){rosterReviewMessage='O gerador QR não carregou. Atualize a página e tente novamente.';render();return;}
+ // Tudo é montado localmente no navegador autorizado, sem serviço externo de QR.
+ let labels;
+ try{
+  labels=list.map(s=>{
+   const qr=window.qrcode(0,'M');
+   qr.addData(`SONIA26|${s.local_reference}|FICHA-V1`,'Byte');
+   qr.make();
+   return `<article class="label"><div class="label-title">${clean(klass.label)} · 2026</div><div class="student-name">${clean(s.display_name)}</div><div class="qr">${qr.createSvgTag({cellSize:5,margin:20,scalable:true})}</div><div class="code">${clean(s.local_reference)}</div></article>`;
+  }).join('');
+ }catch(err){console.warn('Falha ao gerar QR local',err?.message);rosterReviewMessage='Não foi possível gerar as etiquetas. Atualize a página.';render();return;}
+ const popup=window.open('','_blank');
+ if(!popup){rosterReviewMessage='O navegador bloqueou a nova aba. Autorize pop-ups para este site.';render();return;}
+ popup.opener=null;
+ const doc=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Lumina • QR Codes ${clean(klass.label)}</title>
+ <style>@page{size:A4;margin:10mm}*{box-sizing:border-box}
+ body{font-family:Arial,Helvetica,sans-serif;color:#163e32;background:#fff;margin:10mm}
+ .header{margin-bottom:9mm;border-bottom:2px solid #b9a061;padding-bottom:4mm}
+ h1{font-size:18px;margin:0 0 4px}.note{font-size:11px;color:#56645c;margin:5px 0}
+ .sheet{display:grid;grid-template-columns:repeat(2,1fr);gap:5mm}
+ .label{border:1px dashed #a6b1aa;border-radius:5px;padding:5mm 3mm;text-align:center;break-inside:avoid;height:76mm;display:flex;flex-direction:column;align-items:center}
+ .label-title{font-size:11px;color:#415e52;font-weight:700}
+ .student-name{font-size:12px;font-weight:700;margin:3mm 0;min-height:9mm}
+ .qr{width:44mm;height:44mm;margin:auto;display:flex;align-items:center;justify-content:center}
+ .qr svg{width:100%;height:100%}
+ .code{font-family:monospace;font-size:11px;letter-spacing:.3px;margin-top:3mm;color:#273a32}
+ .controls{margin:0 0 15px}.controls button{background:#163e32;border:0;color:white;padding:11px 18px;border-radius:6px;cursor:pointer}
+ @media print{.controls{display:none}body{margin:0}}</style></head><body>
+ <div class="controls"><button type="button" onclick="window.print()">Imprimir etiquetas</button></div>
+ <div class="header"><h1>Lumina | QR Codes da turma ${clean(klass.label)}</h1>
+ <p class="note">${list.length} matrícula(s) confirmada(s). Uso interno da escola. Os QR Codes não contêm nomes ou CPF.</p>
+ <p class="note">Os códigos identificam fichas para o leitor V5. Não são links de envio de documentos.</p></div>
+ <main class="sheet">${labels}</main></body></html>`;
+ popup.document.open();
+ popup.document.write(doc);
+ popup.document.close();
+ popup.focus();
+}
+
 function batches(d){
  const admin=role==='pedagogical_admin';
  const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
@@ -257,7 +305,7 @@ async function refreshLive(){
  const results=await Promise.all([
    get('classrooms','id,label,shift,school_year'),
    get('assessment_cycles','id,title,status,school_year'),
-   profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id,active','none'),
+   profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id,active,local_reference','none'),
    profile.role==='director'?Promise.resolve([]):get('assessment_results','student_id,cycle_id,answers','none'),
    profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
@@ -343,7 +391,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
