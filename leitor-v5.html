@@ -173,8 +173,84 @@ function hypothesisThreshold(scores){
  const values=H.map(k=>scores[k]||0);
  return Math.max(MARK_THRESHOLD,median(values)+.13);
 }
+
+function getAnswersFromGrid(all){
+ // V7: reconhece os próprios quadradinhos já impressos, em vez de
+ // estimar suas coordenadas por uma proporção fotográfica aproximada.
+ // Campos/quantidades fixas do formulário Sonia Maria: H=5, L=7, T=6, M=28.
+ const {b,w,h,boxes}=all,sz=10*w/PAGE[0];
+ const square=boxes.filter(v=>v.w>=sz*.98&&v.h>=sz*.95&&v.w<=sz*1.45&&v.h<=sz*1.45);
+ const rois={
+  H:[.16,.29,.035,.76],
+  L:[.29,.40,.035,.76],
+  T:[.40,.50,.28,.90],
+  M:[.48,.73,.46,.94]
+ };
+ const regions={};
+ for(const [key,[yt,yb,xl,xr]] of Object.entries(rois))
+  regions[key]=square.filter(v=>v.y>yt*h&&v.y<yb*h&&v.x>xl*w&&v.x<xr*w);
+ if(regions.H.length!==5||regions.L.length!==7||
+   regions.T.length!==6||regions.M.length!==28)return null;
+ const scores={};
+ const ink=box=>{
+  const margin=Math.max(2,Math.floor(Math.min(box.w,box.h)*.2));
+  let sum=0,n=0;
+  for(let y=box.y+margin;y<box.y+box.h-margin;y++)
+   for(let x=box.x+margin;x<box.x+box.w-margin;x++)
+    if(x>=0&&y>=0&&x<w&&y<h){sum+=b[y*w+x];n++;}
+  return n?sum/n:0;
+ };
+ for(const [key,labels,leftCount] of [
+  ['H',H,3],['L',L,4]
+ ]){
+  const list=regions[key],xs=list.map(v=>v.x);
+  const middle=(Math.min(...xs)+Math.max(...xs))/2;
+  const left=list.filter(v=>v.x<middle).sort((a,b)=>a.y-b.y);
+  const right=list.filter(v=>v.x>=middle).sort((a,b)=>a.y-b.y);
+  if(left.length!==leftCount||right.length!==labels.length-leftCount)return null;
+  if(Math.min(...right.map(v=>v.x))-Math.max(...left.map(v=>v.x))<w*.24)return null;
+  [...left,...right].forEach((v,i)=>scores[labels[i]]=ink(v));
+ }
+ const tc=regions.T.slice().sort((a,b)=>a.x-b.x);
+ for(let col=0;col<3;col++){
+  const column=tc.slice(col*2,col*2+2).sort((a,b)=>a.y-b.y);
+  if(Math.abs(column[0].x-column[1].x)>w*.06)return null;
+  if(column[1].y-column[0].y<w*.015||column[1].y-column[0].y>w*.07)return null;
+  scores[T1[col]]=ink(column[0]);scores[T2[col]]=ink(column[1]);
+ }
+ const ms=regions.M.slice().sort((a,b)=>a.y-b.y);
+ const rows=[];
+ for(const v of ms){
+  if(!rows.length||v.y-rows[rows.length-1].reduce((a,z)=>a+z.y,0)/rows[rows.length-1].length>Math.max(8,sz*.67))
+   rows.push([v]);
+  else rows[rows.length-1].push(v);
+ }
+ if(rows.length!==7||rows.some(row=>row.length!==4))return null;
+ const centers=[];
+ for(let i=0;i<7;i++){
+  const row=rows[i].slice().sort((a,b)=>a.x-b.x);
+  const xs=row.map(v=>v.x);
+  if(xs[1]-xs[0]<w*.05||xs[2]-xs[1]<w*.05||xs[3]-xs[2]<w*.05)return null;
+  row.forEach((v,j)=>scores[M[i][j]]=ink(v));
+  centers.push(row.reduce((a,v)=>a+v.y,0)/4);
+ }
+ const dy=centers.slice(1).map((v,i)=>v-centers[i]);
+ if(Math.min(...dy)<sz*1.15||Math.max(...dy)>sz*2.75)return null;
+ const answers={},thresholds={};
+ for(const [_,key,options] of GROUPS){
+  answers[key]=uniqueMarked(options,scores);
+  thresholds[key]=Math.max(MARK_THRESHOLD,median(options.map(k=>scores[k]||0))+.13);
+ }
+ answers.L=L.filter(k=>scores[k]>=.46);
+ thresholds.L=.46;
+ return {answers,scores,align:{H:5,L:7,T:6,M:28},
+   aligned:true,candidates:boxes.length,thresholds,method:'grade de quadradinhos'};
+}
+
 function getAnswers(canvas){
- const all=bwCandidates(canvas),scores={},align={};
+ const all=bwCandidates(canvas);
+ const matched=getAnswersFromGrid(all);if(matched)return matched;
+ const scores={},align={};
  // Matemática contém 28 pontos de ancoragem: usamos sua geometria também como
  // ponto de partida para blocos menores, evitando trocar as linhas entre si.
  const clusters={M:M.flat(),H,L,T:[...T1,...T2]};
