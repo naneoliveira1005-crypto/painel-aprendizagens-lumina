@@ -1,0 +1,103 @@
+/* Instrumentos aprovados pela escola. Arquivo público sem nomes, matrículas ou chaves privadas. */
+(function(){
+"use strict";
+const SCHOOL="ESCOLA MUNICIPAL SÔNIA MARIA PEREIRA DO NASCIMENTO";
+const poems=["BATATINHA QUANDO NASCE","ESPALHA A RAMA PELO CHÃO.","MENININHA QUANDO DORME","PÕE A MÃO NO CORAÇÃO."];
+const lp={
+ 1:{story:["A LEBRE CORRIA MUITO.","A TARTARUGA ANDAVA DEVAGAR.","ELAS FIZERAM UMA CORRIDA.","A LEBRE PAROU PARA DESCANSAR.","A TARTARUGA CONTINUOU E CHEGOU PRIMEIRO."],q:["QUEM CORRIA MUITO?","QUEM CHEGOU PRIMEIRO?"]},
+ 2:{story:["A LEBRE ERA MUITO RÁPIDA E GOSTAVA DE SE GABAR. A TARTARUGA A CONVIDOU PARA UMA CORRIDA.","A LEBRE SAIU NA FRENTE, MAS RESOLVEU DORMIR. A TARTARUGA SEGUIU SEM PARAR. QUANDO A LEBRE ACORDOU, VIU QUE A TARTARUGA HAVIA VENCIDO."],q:["POR QUE A LEBRE NÃO VENCEU?","O QUE A TARTARUGA FEZ DURANTE A CORRIDA?"]},
+ 3:{story:["A LEBRE ZOMBAVA DA TARTARUGA PORQUE ELA ANDAVA LENTAMENTE. CANSADA DAS BRINCADEIRAS, A TARTARUGA A DESAFIOU PARA UMA CORRIDA.","A LEBRE PARTIU VELOZ E, CONFIANTE NA VITÓRIA, DEITOU-SE À SOMBRA DE UMA ÁRVORE. ENQUANTO ISSO, A TARTARUGA SEGUIU, PASSO A PASSO. AO DESPERTAR, A LEBRE CORREU, MAS A TARTARUGA JÁ HAVIA CRUZADO A LINHA DE CHEGADA."],q:["QUE ATITUDE DA LEBRE CONTRIBUIU PARA SUA DERROTA?","QUAL É A PRINCIPAL MENSAGEM DA HISTÓRIA?"]},
+ 4:{story:["A LEBRE SE CONSIDERAVA A MAIS VELOZ DOS ANIMAIS DA FLORESTA E COSTUMAVA RIDICULARIZAR A TARTARUGA. CERTO DIA, CANSADA DAS PROVOCAÇÕES, A TARTARUGA PROPÔS UMA CORRIDA.","LOGO APÓS A LARGADA, A LEBRE ABRIU GRANDE VANTAGEM. ACREDITANDO QUE NADA PODERIA AMEAÇAR SUA VITÓRIA, DECIDIU DESCANSAR E ADORMECEU. A TARTARUGA, EMBORA CAMINHASSE DEVAGAR, NÃO INTERROMPEU O PERCURSO.","QUANDO A LEBRE DESPERTOU, CORREU DESESPERADAMENTE, MAS ERA TARDE: SUA ADVERSÁRIA JÁ TINHA VENCIDO."],q:["EXPLIQUE COMO A CONFIANÇA EXCESSIVA INFLUENCIOU O RESULTADO.","IDENTIFIQUE NO TEXTO UMA ATITUDE QUE REVELE PERSISTÊNCIA."]},
+ 5:{story:["NA FLORESTA, A LEBRE VIVIA EXIBINDO SUA VELOCIDADE E DESPREZANDO OS ANIMAIS MAIS LENTOS. A TARTARUGA, INCOMODADA COM AS PROVOCAÇÕES, DESAFIOU-A PARA UMA CORRIDA. OS DEMAIS ANIMAIS REUNIRAM-SE PARA ASSISTIR À DISPUTA.","ASSIM QUE FOI DADA A LARGADA, A LEBRE DISPAROU E LOGO DEIXOU A ADVERSÁRIA PARA TRÁS. CONVENCIDA DE QUE SUA VITÓRIA ERA INEVITÁVEL, RESOLVEU TIRAR UMA SONECA À SOMBRA DE UMA ÁRVORE. A TARTARUGA, POR SUA VEZ, MANTEVE UM RITMO CONSTANTE, SEM SE DEIXAR DISTRAIR.","QUANDO A LEBRE ACORDOU, PERCEBEU QUE HAVIA SUBESTIMADO A ADVERSÁRIA. CORREU O MAIS RÁPIDO QUE PÔDE, MAS A TARTARUGA JÁ TINHA CRUZADO A LINHA DE CHEGADA. A CORRIDA MOSTROU QUE RAPIDEZ, SEM RESPONSABILIDADE, NÃO GARANTE O SUCESSO."],q:["O QUE A EXPRESSÃO “VITÓRIA INEVITÁVEL” REVELA SOBRE A LEBRE?","COMPARE AS ATITUDES DAS DUAS PERSONAGENS E JUSTIFIQUE O DESFECHO."]}
+};
+const mat={
+1:[["CONTAR E QUANTIFICAR","Conte os desenhos e escreva quantos há ao todo: ● ● ● ● ● ●"],["LER E ESCREVER NÚMEROS","Leia para a professora o número 14. Depois escreva o número que ela ditar: NOVE."],["SISTEMA DECIMAL","Observe 12 tampinhas: separamos 10 e sobraram 2. Complete: 12 = ____ dezena e ____ unidades."],["ADIÇÃO E SUBTRAÇÃO","Lia tinha 5 figurinhas e ganhou mais 3. Com quantas figurinhas ficou?"],["GRUPOS IGUAIS","Há 2 pratos, com 3 biscoitos em cada. Quantos biscoitos há ao todo? Desenhe se quiser."],["SEQUÊNCIA","Complete: 2, 4, 6, ____, ____."],["TABELA","Frutas escolhidas: BANANA = 4; MAÇÃ = 2; UVA = 3. Qual fruta foi mais escolhida?"]],
+2:[["QUANTIDADE EM AGRUPAMENTOS","Há 3 grupos com 10 palitos e 4 palitos soltos. Quantos palitos há no total?"],["LER E ESCREVER NÚMEROS","Leia 86 para a professora. Escreva em algarismos: CENTO E VINTE."],["SISTEMA DECIMAL","Complete: 47 = ____ dezenas e ____ unidades."],["ADIÇÃO E SUBTRAÇÃO","Havia 26 livros na sala. Chegaram mais 13. Quantos livros há agora?"],["GRUPOS IGUAIS","Há 4 caixas com 3 lápis em cada. Quantos lápis há no total?"],["SEQUÊNCIA","Complete: 15, 20, 25, ____, ____."],["TABELA","Livros lidos: ANA = 5; BIA = 3; CAIO = 4. Quem leu menos livros?"]],
+3:[["QUANTIDADE EM AGRUPAMENTOS","Há 4 pacotes com 100 folhas, 3 grupos de 10 folhas e 6 soltas. Quantas folhas há?"],["LER E ESCREVER NÚMEROS","Leia 1.205. Escreva em algarismos: NOVECENTOS E QUATORZE."],["SISTEMA DECIMAL","Decomponha 358 em centenas, dezenas e unidades."],["ADIÇÃO E SUBTRAÇÃO","A biblioteca tinha 245 livros e recebeu mais 128. Quantos livros tem agora?"],["GRUPOS IGUAIS","24 lápis serão repartidos igualmente entre 4 estudantes. Quantos lápis cada um receberá?"],["SEQUÊNCIA","Complete: 120, 130, 140, ____, ____."],["TABELA","Brinquedos: BOLA = 12; CORDA = 8; PETECA = 15. Qual brinquedo teve mais escolhas?"]],
+4:[["QUANTIDADE EM AGRUPAMENTOS","Um depósito tem 5 caixas com 1.000 peças, 3 pacotes de 100 e 7 peças soltas. Quantas peças são?"],["LER E ESCREVER NÚMEROS","Leia 14.206. Escreva em algarismos: OITO MIL E QUARENTA."],["SISTEMA DECIMAL","Qual é o valor do algarismo 6 no número 4.628?"],["ADIÇÃO E SUBTRAÇÃO","Uma escola tinha 1.250 livros e doou 375. Quantos livros restaram?"],["GRUPOS IGUAIS","Há 6 mesas com 8 lugares em cada. Quantos lugares existem ao todo?"],["SEQUÊNCIA","Complete: 250, 275, 300, ____, ____."],["TABELA","Visitas à biblioteca: SEG = 36; TER = 42; QUA = 29. Em qual dia houve mais visitas?"]],
+5:[["QUANTIDADE EM AGRUPAMENTOS","Há 7 caixas com 1.000 unidades, 4 pacotes de 100 e 9 unidades soltas. Quantas unidades são?"],["LER E ESCREVER NÚMEROS","Leia 305.018. Escreva em algarismos: QUARENTA E DOIS MIL E SEIS."],["SISTEMA DECIMAL","Decomponha 35.407 em valores posicionais (use adições)."],["ADIÇÃO E SUBTRAÇÃO","Uma campanha arrecadou 2.450 livros. Foram distribuídos 1.785. Quantos livros sobraram?"],["GRUPOS IGUAIS","156 cadernos serão distribuídos igualmente em 12 turmas. Quantos cadernos cada turma receberá?"],["SEQUÊNCIA","Complete: 1.200, 1.150, 1.100, ____, ____."],["TABELA","Arrecadação: TURMA A = 125; B = 150; C = 135. Quantos itens B arrecadou a mais que A?"]]
+};
+const esc=x=>String(x??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+function QR(code,type){
+ const x=window.qrcode(0,"M");x.addData("SONIA26|"+code+"|"+type,"Byte");x.make();
+ return x.createSvgTag({cellSize:3,margin:6,scalable:true});
+}
+function header(title,s,c,type){
+ return '<header class="head"><div class="headtext"><small>LUMINA · ACOMPANHAMENTO DAS APRENDIZAGENS</small><h1>'+esc(title)+'</h1><p>'+SCHOOL+'</p><p><b>ESTUDANTE:</b> '+esc(s.display_name)+'</p><p><b>TURMA:</b> '+esc(c.label)+' &nbsp; <b>DATA:</b> ____/____/2026</p></div><div class="qr-small">'+QR(s.local_reference,type)+'</div></header>';
+}
+function language(s,c,year){
+ const part=lp[year];
+ return '<section class="page activity">'+header('LÍNGUA PORTUGUESA — '+year+'º ANO',s,c,"LP-V1")+
+ '<div class="instruction">A professora ditará cinco palavras e uma frase. Escreva sem copiar. Depois, faça a leitura.</div>'+
+ '<h2>1. ESCRITA DE CINCO PALAVRAS</h2>'+Array.from({length:5},(_,i)=>'<div class="write">'+(i+1)+'.</div>').join("")+
+ '<h2>2. ESCRITA DE UMA FRASE</h2><div class="write"></div><div class="write"></div>'+
+ '<h2>3. LEITURA DE TEXTO DE MEMÓRIA</h2><div class="poem">'+poems.map(x=>'<div>'+esc(x)+'</div>').join("")+'</div>'+
+ '<h2>4. LEITURA DE TEXTO NARRATIVO</h2><strong class="storytitle">A LEBRE E A TARTARUGA</strong><div class="story">'+part.story.map(x=>'<p>'+esc(x)+'</p>').join("")+'</div>'+
+ '<h2>5. COMPREENSÃO ORAL DO TEXTO</h2>'+part.q.map((q,i)=>'<div class="question">'+(i+1)+'. '+esc(q)+'<div class="write"></div></div>').join("")+
+ '<footer>Guarde as produções originais. Para leitura óptica, use apenas a FICHA ÚNICA de X.</footer></section>';
+}
+function mathematics(s,c,year){
+ return '<section class="page activity">'+header('MATEMÁTICA — '+year+'º ANO',s,c,"MAT-V1")+
+ '<div class="instruction">A professora pode ler os enunciados. Resolva do seu jeito; use desenhos ou cálculos.</div>'+
+ mat[year].map((q,i)=>'<div class="math-item"><h3>'+(i+1)+'. M'+(i+1)+' · '+esc(q[0])+'</h3><div>'+esc(q[1])+'</div><p class="answer">RESPOSTA / ESTRATÉGIA: ___________________________________________________</p></div>').join("")+
+ '<footer>Registro de observação pedagógica, não prova padronizada. A ficha única de X é separada.</footer></section>';
+}
+const W=595.2755905511812,H=841.8897637795277;
+const rect=(x,y,w,h,fill,stroke)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+(fill||"none")+'" stroke="'+(stroke||"none")+'"/>';
+const txt=(x,y,t,size,weight,color)=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+(size||9.5)+'" font-weight="'+(weight||"normal")+'" fill="'+(color||"#23342e")+'">'+esc(t)+'</text>';
+const mark=(x,y,t,tx)=>rect(x,y,10,10,"white","#0e2018")+txt(tx??x+14,y+9,t,9.6);
+function marking(s,c){
+ const o=[];
+ const band=(y,title)=>{o.push(rect(33,y,528,17,"#e8f1ed"));o.push(txt(41,y+12,title,10,"bold","#20483a"));};
+ o.push(rect(0,0,W,82,"#173e33"));
+ o.push(txt(34,32,"FICHA DIAGNÓSTICA INTEGRADA",17,"bold","white"));
+ o.push(txt(34,52,"LÍNGUA PORTUGUESA + MATEMÁTICA | 2026",11,"normal","white"));
+ o.push(rect(474,26,105,106,"white"));
+ o.push(QR(s.local_reference,"FICHA-V1").replace(/<svg /,'<svg x="478" y="30" width="96" height="96" '));
+ o.push(txt(34,111,"ESCOLA: "+SCHOOL,9));
+ o.push(txt(34,128,"ESTUDANTE: "+s.display_name,10,"bold"));
+ o.push(txt(34,145,"TURMA: "+c.label+"     DATA: ____/____/2026",10));
+ o.push(txt(34,164,"Marque X dentro do quadrado, sem pintar. Só esta folha vai para o leitor V5.",8.5,"normal","#55675c"));
+ band(152,"A. HIPÓTESE DE ESCRITA — MARQUE UMA");
+ [["Pré-silábica",40,173],["Silábica sem valor",40,191],["Silábica com valor",40,209],["Silábico-alfabética",320,173],["Alfabética",320,191]].forEach(x=>o.push(mark(x[1],x[2],x[0])));
+ band(233,"B. LEITURA — MARQUE X NAS HABILIDADES OBSERVADAS");
+ [["Reconhece letras",40,255],["Lê letras isoladas",40,273],["Lê sílabas simples",40,291],["Lê sílabas complexas",40,309],["Lê palavras",320,255],["Lê frases simples",320,273],["Lê frases complexas",320,291]].forEach(x=>o.push(mark(x[1],x[2],x[0])));
+ band(335,"C. LEITURA DE TEXTOS — UMA OPÇÃO POR LINHA");
+ o.push(txt(40,369,"Texto de memória",10));o.push(txt(40,389,"Texto narrativo",10));
+ [["Lê",245,360],["Recita",340,360],["Não lê",445,360],["Fluente",245,380],["Sem fluência",340,380],["Não lê",445,380]].forEach(x=>o.push(mark(x[1],x[2],x[0])));
+ band(408,"D. MATEMÁTICA — UMA OPÇÃO POR INDICADOR");
+ o.push(txt(40,438,"A=sozinho | P=parcial/ajuda | N=não demonstrou | NO=não observado",9));
+ const labs=["Contagem e quantificação","Leitura e escrita de números","Sistema decimal","Adição e subtração","Grupos iguais e repartição","Sequências e regularidades","Leitura de dados"];
+ labs.forEach((lab,i)=>{const y=445+i*19;o.push(txt(40,y+9,"M"+(i+1)+" "+lab,9.6));[["A",350],["P",405],["N",460],["NO",515]].forEach(v=>o.push(mark(v[1],y,v[0])))});
+ band(594,"OBSERVAÇÕES PEDAGÓGICAS COMPLEMENTARES — MANUAIS");
+ o.push(txt(40,634,"Memória: leitura com apoio/autonomia e fluência:",9.8));
+ o.push(rect(40,642,510,1,"#afc1b6"));
+ o.push(txt(40,667,"Narrativa: leitura com apoio/autonomia e fluência:",9.8));
+ o.push(rect(40,675,510,1,"#afc1b6"));
+ o.push(txt(40,700,"Compreensão: autônoma/com mediação/não demonstrada:",9.8));
+ o.push(rect(40,708,510,1,"#afc1b6"));
+ o.push(txt(40,738,"Observações adicionais:",9.8));
+ o.push(rect(40,745,510,1,"#afc1b6"));o.push(rect(40,773,510,1,"#afc1b6"));
+ o.push(txt(34,811,"Avaliação e decisão pedagógica da professora. A câmera lê somente QR e X.",8.8,"normal","#596b61"));
+ return '<section class="page marking"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="100%">'+o.join("")+'</svg></section>';
+}
+const css="@page{size:A4;margin:0}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#eef1ee;color:#23392f}.toolbar{margin:12px auto;max-width:950px;background:#173e33;color:white;padding:12px 16px;border-radius:9px;display:flex;gap:15px;align-items:center;font-size:12px}.toolbar button{background:#f4ead3;color:#173e33;border:none;border-radius:6px;font-weight:bold;padding:10px 16px;cursor:pointer}.page{width:210mm;height:297mm;background:white;margin:15px auto;position:relative;overflow:hidden;break-after:page;page-break-after:always;box-shadow:0 3px 9px #0002}.page:last-child{break-after:auto;page-break-after:auto}.activity{padding:12mm 14mm 10mm}.head{display:flex;gap:7mm;justify-content:space-between;align-items:start;border-bottom:2px solid #b59d65;padding-bottom:4mm;margin-bottom:5mm;min-height:34mm}.headtext{flex:1;min-width:0}.head small{font-size:8.5px;color:#28634e;font-weight:bold}.head h1{font-size:17px;margin:3mm 0 2mm}.head p{font-size:9.7px;margin:1.6mm 0}.qr-small{width:26mm;min-width:26mm;height:26mm}.qr-small svg{width:100%;height:100%}.instruction{font-size:10.5px;padding:7px 9px;background:#edf4ef;margin-bottom:5mm}.activity h2{font-size:11px;background:#edf4ef;padding:5px 7px;margin:4mm 0 2.5mm}.write{height:6.7mm;border-bottom:1px solid #85998e;margin:1mm 0;font-size:11px}.poem{font-size:11.7px;line-height:1.4;margin-left:4mm}.storytitle{font-size:12px}.story{font-size:11.2px;line-height:1.26}.story p{margin:0 0 6px}.question{font-size:10.4px;margin:2mm 0}.math-item{padding:3.2mm 0;border-bottom:1px solid #dae2da;font-size:11.4px}.math-item h3{font-size:10.8px;color:#21483b;margin:0 0 2mm}.answer{font-size:9.2px;color:#6c7a70;white-space:nowrap;margin:3mm 0 0}.activity footer{position:absolute;bottom:7mm;left:14mm;right:14mm;font-size:8.3px;color:#66786d;border-top:1px solid #d8e2d8;padding-top:2mm}.marking svg{display:block}@media print{body{background:white}.toolbar{display:none}.page{box-shadow:none;margin:0}}";
+function printSet(rows,klass){
+ if(!window.qrcode)throw new Error("Biblioteca QR indisponível");
+ if(!Array.isArray(rows)||!rows.length||!klass?.id)throw new Error("Selecione uma turma e seus estudantes.");
+ const grade=Number((klass.label.match(/^[1-5]/)||[])[0]);
+ if(!lp[grade]||!mat[grade])throw new Error("Instrumento indisponível para o ano.");
+ const ids=new Set();
+ rows.forEach(s=>{if(s.classroom_id!==klass.id||!s.active||!/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||""))throw new Error("As fichas exigem matrícula confirmada e código válido.");if(ids.has(s.id))throw new Error("Estudante repetido");ids.add(s.id)});
+ const p=window.open("","_blank");
+ if(!p)throw new Error("O navegador bloqueou a nova aba de impressão.");
+ p.opener=null;
+ try{
+  const pages=rows.slice().sort((a,b)=>a.display_name.localeCompare(b.display_name,"pt-BR")).map(s=>language(s,klass,grade)+mathematics(s,klass,grade)+marking(s,klass)).join("");
+  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina | Fichas '+esc(klass.label)+'</title><style>'+css+'</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir ou salvar em PDF</button><span>'+rows.length+' estudante(s) • '+(rows.length*3)+' páginas • LP + Matemática + Ficha Única de X • Uso interno</span></div>'+pages+'</body></html>';
+  p.document.open();p.document.write(html);p.document.close();p.focus();
+  return {students:rows.length,pages:rows.length*3};
+ }catch(err){p.close();throw err;}
+}
+window.LuminaFichas={printSet,version:"2026-fichas-v1",pagesPerStudent:3};
+})();
