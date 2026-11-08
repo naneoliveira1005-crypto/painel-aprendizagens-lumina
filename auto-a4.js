@@ -153,7 +153,8 @@ function detectOtsuSheet(canvas){
  }
  const ratio=bestArea/(W*H);
  if(!bounds||ratio<.27||ratio>.94||bounds.xhi-bounds.xlo<W*.38||
-     bounds.yhi-bounds.ylo<H*.47)return null;
+     bounds.yhi-bounds.ylo<H*.47||
+     (bounds.ylo<=H*.015&&bounds.yhi>=H*.985))return null;
  const xs=[],top=[],bottom=[];
  const step=Math.max(3,Math.round((bounds.xhi-bounds.xlo)/90));
  for(let x=bounds.xlo+Math.round((bounds.xhi-bounds.xlo)*.08);
