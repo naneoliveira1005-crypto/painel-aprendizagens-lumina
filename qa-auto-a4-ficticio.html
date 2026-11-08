@@ -73,7 +73,18 @@ $('run').onclick=async()=>{
   await pauseFor(()=>doc.querySelector('#message').textContent.includes('Análise finalizada'),90000);
   const result=doc.querySelector('#message').textContent;
   const detail=doc.querySelector('#rows')?.innerText||'';
-  $('status').textContent='RESULTADO DO LEITOR:\n'+result+'\n'+detectionResult+'\n'+pixelsNote+'\nDETALHES:\n'+detail+
+  const state=frame.eval('queue[0] && ({answers:queue[0].answers,method:queue[0].autoCropStatus})');
+  const expected={H:'H5',T1:'T10',T2:'T20',M1:'M1_A',M2:'M2_P',M3:'M3_A',M4:'M4_N',M5:'M5_A',M6:'M6_A',M7:'M7_P'};
+  const mismatches=Object.entries(expected).filter(([k,v])=>state?.answers?.[k]!==v)
+      .map(([k,v])=>k+': esperado '+v+' / lido '+(state?.answers?.[k]||'—'));
+  const expectedReading=['L1','L2','L3','L5','L6'];
+  const actualReading=(state?.answers?.L||[]).slice().sort();
+  if(actualReading.join('|')!==expectedReading.slice().sort().join('|'))
+    mismatches.push('Leitura L: esperado '+expectedReading.join('|')+' / lido '+actualReading.join('|'));
+  const checking=mismatches.length?'MARCAÇÕES INCORRETAS: '+mismatches.join('; '):
+    'MARCAÇÕES CONFERIDAS: H5, L1/L2/L3/L5/L6, T10, T20, M1=A, M2=P, M3=A, M4=N, M5=A, M6=A, M7=P.';
+
+  $('status').textContent='RESULTADO DO LEITOR:\n'+result+'\n'+detectionResult+'\n'+pixelsNote+'\n'+checking+'\n'+(state?.method||'')+'\nDETALHES:\n'+detail+
     '\n\nResultado esperado: 1 pronta; 0 com pendências. Nesta simulação, a detecção deve corrigir automaticamente a foto.';
  }catch(err){
   $('status').textContent='TESTE NÃO CONCLUÍDO: '+(err.message||String(err));
