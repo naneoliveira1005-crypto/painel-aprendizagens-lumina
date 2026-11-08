@@ -112,16 +112,27 @@ function documentCorners(canvas){
   return Math.sqrt(upper.reduce((z,a,k)=>z+(a-lower[k])**2,0))/n;
  }
  const topSamples=[];
+ const colorAt=(x,y)=>{
+  const xx=clamp(Math.round(x),0,W-1),yy=clamp(Math.round(y),0,H-1),i=(yy*W+xx)*4;
+  return [rgba[i],rgba[i+1],rgba[i+2]];
+ };
+ const diff=(one,two)=>Math.hypot(one[0]-two[0],one[1]-two[1],one[2]-two[2]);
  for(let j=2;j<=10;j++){
   const x=xl+(xr-xl)*j/12;
   const expected=estimatedTop+bottomLine.a*(x-centerX);
-  let bestScore=0,bestY=null;
-  for(let y=Math.max(8,Math.round(expected-H*.035));y<Math.min(H*.42,Math.round(expected+H*.035));y+=2){
-   const change=edgeColor(x,y);
-   const score=change-(Math.abs(y-expected)*.32);
-   if(score>bestScore){bestScore=score;bestY=y;}
+  const low=Math.max(9,Math.round(expected-H*.16));
+  const high=Math.min(Math.round(H*.44),Math.round(expected+H*.11));
+  const outside=colorAt(x,Math.max(1,low-7));
+  let edge=null;
+  // Primeiro limite de cor contínuo: borda da FOLHA, não a barra escura que termina 10% abaixo dela.
+  for(let y=low;y<high;y+=2){
+   const before=colorAt(x,y-5),after=colorAt(x,y+5),after2=colorAt(x,y+13);
+   const jump=diff(before,after);
+   if(jump>27&&diff(outside,after)>30&&diff(outside,after2)>27){
+    edge=y;break;
+   }
   }
-  if(bestY!==null&&bestScore>17)topSamples.push([x,bestY]);
+  if(edge!==null)topSamples.push([x,edge]);
  }
  let topLine=topSamples.length>=5?fitLine(topSamples,1):null;
  if(!topLine){
