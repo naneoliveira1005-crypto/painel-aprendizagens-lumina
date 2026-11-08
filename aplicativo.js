@@ -92,7 +92,7 @@ function assessments(d){
    studentSection=`<div class="card"><h2>Pré-cadastro de estudantes — 2026</h2>
     <p><strong>${pending} registro(s) pendentes</strong> e <strong>${verified} confirmado(s)</strong> na escola. Pendentes ficam visíveis somente à coordenação.</p>
     ${notice('Só confirme cada matrícula depois de conferir NOME E TURMA com a lista oficial ATUAL da secretaria. A confirmação permite a visualização pela professora autorizada da turma.','info')}
-    ${notice('O nome repetido entre 5º A e 5º B está bloqueado até a secretaria identificar a turma correta. Não exclua nenhum registro.','info')}
+    ${selected.some(repeated)?notice('Há um nome repetido entre turmas nesta lista. Consulte a secretaria antes de confirmar o registro correspondente.','info'):''}
     <label for="studentClassFilter"><strong>Escolha uma turma para conferir</strong></label>
     <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
       <option value="">Selecione uma turma</option>${opts}</select>
