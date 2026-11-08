@@ -11,12 +11,12 @@ canvas{max-width:100%;border:1px solid #b3c4b6}iframe{width:100%;height:680px;bo
 <script src="qrcode-generator.js"></script>
 <script src="fichas-personalizadas.js?v=20261108-teste-v4"></script>
 </head><body>
-<h1>Teste técnico fictício: foto inclinada → A4 → leitor QR + X</h1><p><strong>QA2: teste de bordas e pixels da folha branca.</strong></p>
+<h1>Teste técnico fictício: foto inclinada → A4 → leitor QR + X</h1><p><strong>QA3: teste de foto inclinada de uma folha A4 sobre uma mesa quase branca.</strong></p>
 <p>Somente uma ficha fictícia é criada no próprio navegador. Nada é enviado ao banco, nem contém dados reais de crianças.</p>
 <button id="run" type="button">Executar teste completo automaticamente</button>
 <pre id="status">Pronto para testar.</pre>
 <main>
-<div><h2>Foto simulada</h2><canvas id="photo" width="760" height="990"></canvas></div>
+<div><h2>Foto simulada sobre fundo quase branco</h2><canvas id="photo" width="760" height="990"></canvas></div>
 <div><h2>Leitor V5</h2><iframe id="reader" title="Leitor V5 (teste fictício)" src="leitor-v5.html?v=20261108-auto-a4-v1"></iframe></div>
 </main>
 <script>
@@ -38,7 +38,7 @@ async function makePhoto(){
   const img=new Image();
   await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=u;});
   const canvas=$('photo'),ctx=canvas.getContext('2d',{willReadFrequently:true});
-  ctx.fillStyle='#8a8d87';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fafafa';ctx.fillRect(0,0,canvas.width,canvas.height);
   for(let y=0;y<990;y+=17){
    ctx.fillStyle=y%34?'rgba(30,45,30,.025)':'rgba(245,240,215,.035)';
    ctx.fillRect(0,y,760,8);
