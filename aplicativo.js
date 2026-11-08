@@ -15,6 +15,7 @@ let mode='guest', currentPage='visao', role='pedagogical_admin', profile=null;
 let selectedRosterClass='';
 let rosterReviewMessage='';
 let pilotCandidate=null;
+let pilotStageMessage='';
 let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
  ['1º A','matutino'],['1º B','vespertino'],['2º A','matutino'],['2º B','matutino'],['2º C','vespertino'],
@@ -301,8 +302,9 @@ function printQrCodes(classroomId){
 
 function batches(d){
  const admin=role==='pedagogical_admin';
+ const savedPilot=pilotStageMessage?notice(clean(pilotStageMessage),'info'):'';
  const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
- return `${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A importação oficial continua bloqueada até concluir os testes de reconhecimento, vinculação e permissões.','info')}
+ return `${savedPilot}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A importação oficial continua bloqueada até concluir os testes de reconhecimento, vinculação e permissões.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>QR Code por estudante, reconhecimento dos X, processamento em lote e revisão das exceções.</p><div class="buttonrow"><button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261108-grade-quadradinhos-v7b" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p></div>
  ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Linhas provisórias acessíveis neste perfil: ${d.importRows.length}. Não representam avaliações publicadas.</p>`:''}</div>`:''}
  <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados. A coordenação poderá registrar um piloto com até dez fichas da mesma turma após a conferência, aguardando validação pedagógica.</p></div>`;
@@ -480,6 +482,7 @@ async function stagePilotCSV(button,area){
   if(result.error)throw new Error(result.error.message||'O banco recusou o lote.');
   if(mode!=='live'||profile?.user_id!==candidate.ownerId)return;
   pilotCandidate=null;
+  pilotStageMessage='Lote piloto registrado em área protegida: '+Number(result.data?.rows_staged||0)+' ficha(s) em revisão pedagógica. Nenhuma avaliação oficial foi publicada.';
   area.replaceChildren();
   const success=document.createElement('p');
   success.textContent='Lote piloto guardado na área protegida. Fichas recebidas: '+Number(result.data?.rows_staged||0)+'. Situação: EM CONFERÊNCIA PEDAGÓGICA. Nenhum resultado oficial foi publicado.';
@@ -513,7 +516,7 @@ async function enterLive(){
  if(!p||!['teacher','pedagogical_admin','director'].includes(p.role)){
   await api.auth.signOut();throw new Error('Sua conta ainda não foi liberada pela coordenação. Nenhum dado escolar foi exibido.');
  }
- profile=p;role=p.role;mode='live';currentPage='visao';
+ profile=p;role=p.role;mode='live';currentPage='visao';pilotCandidate=null;pilotStageMessage='';
  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');
  // Exibe imediatamente a estrutura protegida, mesmo se alguma consulta do banco demorar.
  render();
