@@ -12,6 +12,7 @@ const roleName = {teacher:'Professora',pedagogical_admin:'Coordenação pedagóg
 const plannedName = {teacher:'Professora',pedagogical_admin:'Coordenadora',director:'Diretora'};
 let api=null;
 let mode='guest', currentPage='visao', role='pedagogical_admin', profile=null;
+let selectedRosterClass='';
 let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
  ['1º A','matutino'],['1º B','vespertino'],['2º A','matutino'],['2º B','matutino'],['2º C','vespertino'],
@@ -41,6 +42,7 @@ function render(){
  const d=selectedData();
  $('content').innerHTML=({visao:()=>home(d),turmas:()=>classes(d),avaliacoes:()=>assessments(d),lotes:()=>batches(d),equipe:()=>team(d)})[currentPage]();
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
+ const classroomPicker=$('studentClassFilter'); if(classroomPicker)classroomPicker.addEventListener('change',e=>{selectedRosterClass=e.target.value;render()});
 }
 function home(d){
  let cycleCount=d.cycles.length, classCount=d.classrooms.length, studentCount=d.students.length, resultCount=d.results.length;
@@ -55,7 +57,7 @@ function home(d){
   graph=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'].map((lab,i)=>`<div class="barrow"><span>${clean(lab)}</span><div class="bartrack"><span style="width:${Math.round((v[i]/Math.max(1,...v))*100)}%"></span></div><strong>${v[i]}</strong></div>`).join('');
  }else graph='<div class="empty">Ainda não existem resultados oficiais disponíveis para este perfil. Os sete registros de teste estão em validação separada.</div>';
  const counts = mode==='demo'?['16','—','—','0']: [classCount,studentCount,resultCount,d.importRows.length];
- return `${realWarning}<div class="kpi-grid">${cardKpi(counts[0],'Turmas visíveis','Conforme a permissão')}${cardKpi(counts[1],'Estudantes cadastrados','Não confundir com fichas provisórias')}${cardKpi(counts[2],'Avaliações oficiais','Resultados já validados')}${cardKpi(counts[3],'Fichas em validação','Somente coordenação pode consultar')}</div>
+ return `${realWarning}<div class="kpi-grid">${cardKpi(counts[0],'Turmas visíveis','Conforme a permissão')}${cardKpi(counts[1],mode==='live'?'Estudantes em pré-cadastro':'Estudantes fictícios',mode==='live'?'Aguardam conferência da secretaria':'Dados de demonstração')}${cardKpi(counts[2],'Avaliações oficiais','Resultados já validados')}${cardKpi(counts[3],'Fichas em validação','Somente coordenação pode consultar')}</div>
  <div class="twocol"><article class="card"><h2>Panorama da escrita</h2><p>${mode==='demo'?'Exemplo fictício de visualização':'Somente resultados oficiais autorizados'}</p>${graph}</article><article class="card"><h2>Turmas acompanhadas</h2><p>Organização das turmas e respectivos turnos.</p><ul class="eyelist">${classLines||'<li>Nenhuma turma liberada para este perfil.</li>'}</ul><button class="smallbtn" data-jump="turmas">Ver todas as turmas →</button></article></div>
  <div class="card"><h2>Próximas etapas do projeto</h2><p>Ativação responsável, sem misturar testes com os resultados oficiais.</p><ul class="eyelist"><li><span>Conferir nomes, e-mails, turnos e vínculos da equipe</span>${chip('pending')}</li><li><span>Convidar profissionais e testar perfis de acesso</span>${chip('pending')}</li><li><span>Vincular os QR Codes aos cadastros autorizados</span>${chip('pending')}</li><li><span>Publicar depois dos testes de segurança</span>${chip('pending')}</li></ul></div>`;
 }
@@ -65,7 +67,29 @@ function classes(d){
 }
 function assessments(d){
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
- const studentRows=role==='director'?'<p class="intro-note">A direção tem acesso a informações institucionais; resultados individuais não são disponibilizados neste perfil.</p>': d.students.length?`<div class="tablewrap"><table><thead><tr><th>Estudante</th><th>Turma</th><th>Avaliações oficiais</th></tr></thead><tbody>${d.students.slice(0,50).map(s=>`<tr><td>${clean(s.display_name)}</td><td>${clean(d.classrooms.find(c=>c.id===s.classroom_id)?.label||'')}</td><td>${d.results.filter(r=>r.student_id===s.id).length}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Não existem estudantes e resultados oficiais liberados neste perfil. As sete fichas do piloto estão em validação e não aparecem aqui.</div>';
+
+ let studentSection='';
+ if(role==='director'){
+   studentSection='<div class="card"><h2>Acompanhamento institucional</h2><p>Resultados individuais dos estudantes não são exibidos no perfil da direção.</p></div>';
+ } else if(role==='pedagogical_admin'){
+   const pending=d.students.filter(s=>s.active===false).length;
+   const verified=d.students.filter(s=>s.active===true).length;
+   const opts=d.classrooms.map(c=>`<option value="${clean(c.id)}" ${selectedRosterClass===c.id?'selected':''}>${clean(c.label)} — ${clean(shiftLabel[c.shift]||c.shift)}</option>`).join('');
+   const selected=d.students.filter(s=>s.classroom_id===selectedRosterClass).sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
+   const tableRows=selected.map((s,i)=>`<tr><td>${i+1}</td><td>${clean(s.display_name)}</td><td>${s.active?'<span class="chip">Conferido</span>':'<span class="chip warn">A conferir</span>'}</td></tr>`).join('');
+   studentSection=`<div class="card"><h2>Pré-cadastro de estudantes — 2026</h2>
+     <p><strong>${pending} registro(s) pendentes</strong> e <strong>${verified} confirmado(s)</strong> no banco da escola. Todos os registros pendentes são visíveis somente à coordenação pedagógica, não às professoras.</p>
+     ${notice('Confira cada turma com a secretaria. As listas em PDF foram impressas em maio de 2026 e podem conter matrículas desatualizadas. Há um possível nome repetido entre 5º A e 5º B. Nenhuma matrícula pendente é considerada validada automaticamente.','info')}
+     <label for="studentClassFilter"><strong>Escolha uma turma para conferir</strong></label>
+     <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
+       <option value="">Selecione uma turma</option>${opts}</select>
+     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th></tr></thead><tbody>${tableRows||'<tr><td colspan="3">Selecione uma turma para consultar seus registros.</td></tr>'}</tbody></table></div>
+     <p class="intro-note">Os nomes foram registrados sem CPF, INEP, dados de raça ou informações de saúde. A validação e os QR Codes serão preparados após a conferência dos cadastros.</p></div>`;
+ } else {
+   const activeStudents=d.students.filter(s=>s.active);
+   const rows=activeStudents.map(s=>`<tr><td>${clean(s.display_name)}</td><td>${clean(d.classrooms.find(c=>c.id===s.classroom_id)?.label||'')}</td><td>${d.results.filter(r=>r.student_id===s.id).length}</td></tr>`).join('');
+   studentSection=`<div class="card"><h2>Estudantes autorizados</h2>${rows?`<div class="tablewrap"><table><thead><tr><th>Estudante</th><th>Turma</th><th>Avaliações oficiais</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty">Ainda não há estudantes validados e autorizados para este perfil.</div>'}</div>`;
+ }
  return `<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div>
  ${notice('<strong>Organização pedagógica do fechamento de 2026:</strong> os roteiros abaixo são referências de planejamento para Língua Portuguesa e Matemática. Não constituem lançamentos oficiais nem liberam novos formulários ou envios.','info')}
  <div class="twocol">
@@ -85,9 +109,9 @@ function assessments(d){
    </ul></article>
  </div>
  <div class="card"><h2>Preparação para os registros</h2>
- <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. A identificação dos estudantes e o vínculo de cada ficha ainda precisam ser preparados antes dos lançamentos reais.</p>
+ <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. Os 450 registros recebidos estão em pré-cadastro aguardando conferência; os QR Codes e o vínculo das fichas ainda precisam ser preparados antes dos lançamentos reais.</p>
  <p class="intro-note">Fluxo previsto: aplicação e marcação da ficha → envio protegido do arquivo → conferência pedagógica → validação → visualização consolidada. A etapa de envio e publicação ainda não está habilitada nesta versão.</p></div>
- <div class="card"><h2>Acompanhamento individual autorizado</h2>${studentRows}</div>`;
+ ${studentSection}`;
 }
 function batches(d){
  const admin=role==='pedagogical_admin';
@@ -169,7 +193,7 @@ async function refreshLive(){
  const results=await Promise.all([
    get('classrooms','id,label,shift,school_year'),
    get('assessment_cycles','id,title,status,school_year'),
-   profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id','none'),
+   profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id,active','none'),
    profile.role==='director'?Promise.resolve([]):get('assessment_results','student_id,cycle_id,answers','none'),
    profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
