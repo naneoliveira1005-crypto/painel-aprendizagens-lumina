@@ -14,6 +14,7 @@ let api=null;
 let mode='guest', currentPage='visao', role='pedagogical_admin', profile=null;
 let selectedRosterClass='';
 let rosterReviewMessage='';
+let pilotCandidate=null;
 let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
  ['1º A','matutino'],['1º B','vespertino'],['2º A','matutino'],['2º B','matutino'],['2º C','vespertino'],
@@ -304,7 +305,7 @@ function batches(d){
  return `${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A importação oficial continua bloqueada até concluir os testes de reconhecimento, vinculação e permissões.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>QR Code por estudante, reconhecimento dos X, processamento em lote e revisão das exceções.</p><div class="buttonrow"><button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261108-grade-quadradinhos-v7b" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p></div>
  ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Linhas provisórias acessíveis neste perfil: ${d.importRows.length}. Não representam avaliações publicadas.</p>`:''}</div>`:''}
- <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados.</p></div>`;
+ <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados. A coordenação poderá registrar um piloto com até dez fichas da mesma turma após a conferência, aguardando validação pedagógica.</p></div>`;
 }
 function team(d){
  if(role==='teacher') return `<div class="card"><h2>Minha autorização</h2><p>Você pode consultar as turmas vinculadas ao seu perfil. A coordenação confirma vínculos e altera permissões.</p>${notice('Se alguma turma não aparecer, procure a coordenação pedagógica. Não compartilhe senha nem CPF.','info')}</div>`;
@@ -357,7 +358,7 @@ function checkReaderCSV(csvText, authorizedStudents=[], classrooms=[], checkRost
  return {tallies,rows,checkedRoster:checkRoster};
 }
 function reviewCSV(file){
- const area=$('csvReport');if(!area||!file)return;
+ const area=$('csvReport');pilotCandidate=null;if(!area||!file)return;
  if(file.size>2_000_000){area.textContent='Arquivo muito grande. Separe o lote em arquivos CSV menores.';return;}
  const startedMode=mode,startedUser=profile?.user_id;
  area.textContent='Conferindo o CSV no navegador...';
@@ -404,7 +405,31 @@ function reviewCSV(file){
        table.appendChild(body);wrap.appendChild(table);area.appendChild(wrap);
        if(subset.length>shown.length){const note=document.createElement('p');note.textContent='Exibindo as primeiras '+shown.length+' pendências. Divida o lote e reconfira as demais.';area.appendChild(note);}
      }
-     const footer=document.createElement('p');footer.textContent='Esta é uma conferência local, sem gravação no banco. Não substitui a revisão pedagógica nem o teste de impressão/fotografia.';area.appendChild(footer);
+     const footer=document.createElement('p');footer.textContent='Esta conferência inicial é local. O registro provisório não substitui a validação pedagógica nem armazena as fotografias originais.';area.appendChild(footer);
+     if(liveAdmin){
+       const activeCycle=loaded.cycles.find(c=>c.school_year===2026&&c.status==='draft');
+       const classroomByCode=new Map(students.map(s=>[String(s.local_reference||'').toUpperCase(),s.classroom_id]));
+       const classes=new Set(rows.filter(r=>r.ok).map(r=>classroomByCode.get(r.code)));
+       const existing=new Set(loaded.importRows.filter(r=>['awaiting_pedagogical_review','ready_for_commit','committed'].includes(r.validation_status)).map(r=>r.student_id));
+       const conflict=rows.some(r=>existing.has(students.find(s=>s.local_reference===r.code)?.id));
+       const canStage=!!activeCycle&&tallies.total>=1&&tallies.total<=10&&tallies.review===0&&classes.size===1&&!conflict;
+       if(canStage){
+         pilotCandidate={csv:String(reader.result||''),cycleId:activeCycle.id,ownerId:profile.user_id};
+         const save=document.createElement('button');save.type='button';save.className='smallbtn solid';
+         save.textContent='Guardar este lote piloto para conferência pedagógica';
+         save.onclick=()=>void stagePilotCSV(save,area);
+         area.appendChild(save);
+         const note=document.createElement('p');note.textContent='Este comando grava apenas respostas provisórias vinculadas às matrículas. Nenhuma fotografia é enviada e nenhuma avaliação oficial é publicada.';area.appendChild(note);
+       }else if(tallies.total>0){
+         const why=[];
+         if(!activeCycle)why.push('ciclo de 2026 indisponível');
+         if(tallies.total>10)why.push('piloto limitado a 10 fichas');
+         if(tallies.review)why.push('fichas com pendências');
+         if(classes.size>1)why.push('mistura de turmas');
+         if(conflict)why.push('matrícula com registro provisório anterior');
+         const msg=document.createElement('p');msg.textContent='Gravação provisória bloqueada: '+(why.join('; ')||'lote não elegível')+'. A conferência local permanece disponível.';area.appendChild(msg);
+       }
+     }
    }catch(err){area.textContent=err?.message||'Não foi possível interpretar o CSV.';}
  };
  reader.onerror=()=>area.textContent='Não foi possível ler o arquivo local.';
@@ -462,7 +487,7 @@ async function refreshLive(){
    profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
-   profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status','none'):Promise.resolve([])
+   profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status,student_id,qr_code','none'):Promise.resolve([])
  ]);
  if(mode!=='live'||profile?.user_id!==currentUser)return;
  const [classrooms,cycles,students,official,staff,staffLinks,batches,importRows]=results;
