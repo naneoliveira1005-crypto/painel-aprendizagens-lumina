@@ -116,27 +116,51 @@ async function enterLive(){
  if(!p||!['teacher','pedagogical_admin','director'].includes(p.role)){
   await api.auth.signOut();throw new Error('Sua conta ainda não foi liberada pela coordenação. Nenhum dado escolar foi exibido.');
  }
- profile=p;role=p.role;mode='live';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');
- await refreshLive();
+ profile=p;role=p.role;mode='live';currentPage='visao';
+ $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');
+ // Exibe imediatamente a estrutura protegida, mesmo se alguma consulta do banco demorar.
+ render();
+ $('content').insertAdjacentHTML('afterbegin','<div id="loadNotice" class="notice info" role="status">Carregando informações autorizadas da escola...</div>');
+ void refreshLive().catch(err=>{
+   console.error('Falha ao carregar painel autorizado',err);
+   const card=$('loadNotice')||$('content');
+   if(card)card.textContent='Não foi possível carregar os dados agora. Clique em Atualizar. Sua conta permanece protegida.';
+ });
 }
 async function refreshLive(){
  if(!api||!profile||mode!=='live')return;
+ const currentUser=profile.user_id;
  const get=async(tab,fields,filter='school_id')=>{
-  let q=api.from(tab).select(fields);if(filter==='school_id')q=q.eq('school_id',profile.school_id);
-  const {data,error}=await q;
-  if(error){console.warn('Consulta restrita',tab,error.code);return []}return data||[];
+   try{
+     let q=api.from(tab).select(fields);if(filter==='school_id')q=q.eq('school_id',profile.school_id);
+     // Um endpoint indisponível não pode deixar a interface inteira em branco.
+     const response=await Promise.race([
+       Promise.resolve(q),
+       new Promise((_,reject)=>setTimeout(()=>reject(new Error('Tempo de consulta esgotado')),14000))
+     ]);
+     if(response.error)throw response.error;
+     return response.data||[];
+   }catch(err){
+     console.warn('Consulta restrita ou indisponível',tab,err?.code||err?.message);
+     return [];
+   }
  };
- loaded.classrooms=await get('classrooms','id,label,shift,school_year');
- loaded.cycles=await get('assessment_cycles','id,title,status,school_year');
- loaded.students=profile.role==='director'?[]:await get('students','id,display_name,classroom_id','none');
- loaded.results=profile.role==='director'?[]:await get('assessment_results','student_id,cycle_id,answers','none');
- loaded.staff=profile.role==='pedagogical_admin'?await get('staff_directory','full_name,planned_role,email,status'):[];
- loaded.batches=profile.role==='pedagogical_admin'?await get('import_batches','id,classroom_id,expected_rows,status,source_filename'):[];
- loaded.importRows=profile.role==='pedagogical_admin'?await get('assessment_import_rows','id,batch_id,validation_status','none'):[];
+ const results=await Promise.all([
+   get('classrooms','id,label,shift,school_year'),
+   get('assessment_cycles','id,title,status,school_year'),
+   profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id','none'),
+   profile.role==='director'?Promise.resolve([]):get('assessment_results','student_id,cycle_id,answers','none'),
+   profile.role==='pedagogical_admin'?get('staff_directory','full_name,planned_role,email,status'):Promise.resolve([]),
+   profile.role==='pedagogical_admin'?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
+   profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status','none'):Promise.resolve([])
+ ]);
+ if(mode!=='live'||profile?.user_id!==currentUser)return;
+ const [classrooms,cycles,students,official,staff,batches,importRows]=results;
+ loaded={classrooms,cycles,students,results:official,staff,batches,importRows};
  render();
 }
 function enterDemo(){mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
-function exitDemo(){mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';}
+function exitDemo(){mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
 // A pessoa convidada configura sua própria senha após a confirmação do Supabase.
 const invitationFlow = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type');
 let changingPassword = invitationFlow === 'invite' || invitationFlow === 'recovery';
@@ -223,5 +247,10 @@ function bind(){
      if(changingPassword)showPasswordSetup();
      else{try{await enterLive()}catch(e){$('loginMessage').textContent=e.message}}
    }
- }catch(e){console.warn('Autenticação não inicializada')}}
+ }catch(e){
+   console.warn('Autenticação não inicializada',e?.message);
+   $('loginView').classList.remove('hidden');
+   $('appView').classList.add('hidden');
+   $('loginMessage').textContent='A conexão com a conta não foi concluída. Abra o endereço direto do painel e tente entrar com e-mail e senha.';
+ }}
 })();
