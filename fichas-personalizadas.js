@@ -100,5 +100,35 @@ function printSet(rows,klass){
   return {students:rows.length,pages:rows.length*3};
  }catch(err){p.close();throw err;}
 }
-window.LuminaFichas={printSet,version:"2026-fichas-v1",pagesPerStudent:3};
+
+const keys={
+ 1:["6","Lê 14; escreve 9","1 dezena e 2 unidades","8","6","8, 10","Banana"],
+ 2:["34","Lê 86; escreve 120","4 dezenas e 7 unidades","39","12","30, 35","Bia"],
+ 3:["436","Lê 1.205; escreve 914","300 + 50 + 8","373","6","150, 160","Peteca"],
+ 4:["5.307","Lê 14.206; escreve 8.040","600","875","48","325, 350","Terça-feira"],
+ 5:["7.409","Lê 305.018; escreve 42.006","30.000 + 5.000 + 400 + 7","665","13","1.050, 1.000","25"]
+};
+function printGuide(grade){
+ grade=Number(grade);
+ if(!keys[grade])throw new Error("Selecione um ano do 1º ao 5º.");
+ const printWindow=window.open("","_blank");
+ if(!printWindow)throw new Error("O navegador bloqueou a janela.");
+ printWindow.opener=null;
+ const s='<section class="guide"><h1>ROTEIRO DA PROFESSORA — '+grade+'º ANO</h1><p><b>'+SCHOOL+'</b> · Diagnóstico de fechamento 2026</p>'+
+ '<h2>Ditado e frase (somente para a professora)</h2>'+
+ '<p><b>1.</b> BORBOLETA (polissílaba) &nbsp; <b>2.</b> CAVALO (trissílaba) &nbsp; <b>3.</b> GATO (dissílaba) &nbsp; <b>4.</b> PATO (dissílaba) &nbsp; <b>5.</b> BOI (monossílaba).</p>'+
+ '<p><b>Frase:</b> O GATO VIU O PATO.</p>'+
+ '<p>Não mostrar as palavras durante o ditado, nem corrigir a escrita durante a produção. Observar a leitura individualmente quando possível; distinguir recitação de leitura efetiva.</p>'+
+ '<h2>Gabarito orientador de Matemática</h2><table><thead><tr><th>Indicador</th><th>Resposta esperada</th></tr></thead><tbody>'+
+ keys[grade].map((v,i)=>'<tr><td>M'+(i+1)+'</td><td>'+esc(v)+'</td></tr>').join("")+'</tbody></table>'+
+ '<h2>Marcação na ficha única</h2><p>Escrita: marque uma hipótese. Leitura: marque as habilidades observadas. Texto de memória e narrativa: uma opção por linha; registre apoio e autonomia nas observações complementares. Matemática: A = sozinho; P = parcial/com ajuda; N = não demonstrou; NO = não observado.</p>'+
+ '<p><b>Importante:</b> o registro é resultado da interpretação pedagógica da professora. Para o leitor V5, digitalize somente a ficha única de X, nunca as páginas de atividades. O código do QR identifica a ficha sem conter nome ou CPF.</p>'+
+ '<p><b>Comparabilidade:</b> os indicadores M1–M7 são comuns, mas a complexidade varia conforme o ano. Não comparar acertos de anos diferentes como se fossem notas equivalentes.</p>'+
+ '</section>';
+ const cssGuide='@page{size:A4;margin:16mm}body{font-family:Arial,sans-serif;color:#20382f;font-size:12px;line-height:1.5}h1{font-size:19px;border-bottom:3px solid #b59d65;padding-bottom:10px}h2{font-size:14px;background:#edf4ef;margin-top:18px;padding:6px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{padding:7px;border:1px solid #b9cbbf;text-align:left}th{background:#edf4ef}.toolbar{margin-bottom:15px}.toolbar button{background:#173e33;border:0;border-radius:5px;padding:10px 15px;color:white;cursor:pointer}@media print{.toolbar{display:none}}';
+ const doc='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Lumina | Roteiro da professora '+grade+'º ano</title><style>'+cssGuide+'</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir ou salvar em PDF</button></div>'+s+'</body></html>';
+ printWindow.document.open();printWindow.document.write(doc);printWindow.document.close();printWindow.focus();
+}
+
+window.LuminaFichas={printSet,printGuide,version:"2026-fichas-v2",pagesPerStudent:3};
 })();
