@@ -42,6 +42,26 @@
       <button class="primary" id="btnLogin" type="submit">Entrar com segurança <span aria-hidden="true">→</span></button>
       <div role="status" class="form-message" id="loginMessage" aria-live="polite"></div>
     </form>
+    <button type="button" id="btnForgotPassword" class="textbtn" style="margin-top:13px">Esqueci minha senha</button>
+    <form id="passwordRecoveryForm" class="hidden" autocomplete="on">
+      <h3>Recuperar acesso</h3>
+      <p>Informe o e-mail profissional autorizado. Você receberá um link para definir uma nova senha.</p>
+      <label for="recoveryEmail">E-mail profissional</label>
+      <input id="recoveryEmail" type="email" autocomplete="email" required>
+      <button type="submit" id="btnSendRecovery" class="primary">Enviar link de recuperação</button>
+      <button type="button" id="btnBackFromRecovery" class="textbtn" style="margin-top:13px">Voltar ao login</button>
+      <div id="recoveryMessage" class="form-message" role="status" aria-live="polite"></div>
+    </form>
+    <form id="passwordSetupForm" class="hidden">
+      <h3>Definir senha individual</h3>
+      <p>Este acesso é pessoal. Escolha uma senha exclusiva, que não será exibida à coordenação.</p>
+      <label for="newPassword">Nova senha</label>
+      <input id="newPassword" type="password" autocomplete="new-password" minlength="12" required>
+      <label for="newPasswordConfirm">Confirmar senha</label>
+      <input id="newPasswordConfirm" type="password" autocomplete="new-password" minlength="12" required>
+      <button type="submit" id="btnSavePassword" class="primary">Salvar minha senha</button>
+      <div id="setupPasswordMessage" class="form-message" role="status" aria-live="polite"></div>
+    </form>
     <div class="login-divider"><span>ou</span></div>
     <button id="btnDemo" type="button" class="outline wide">Visualizar a demonstração <span aria-hidden="true">↗</span></button>
     <p class="mininote">A demonstração usa somente dados fictícios. Não permite consultar, alterar nem importar registros reais.</p>
