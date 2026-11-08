@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Lumina | Ficha fictícia para testar o leitor V5</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#163c32;background:#f1f6f2}
+*{box-sizing:border-box}body{margin:0}
+header{background:#153d32;color:white;border-bottom:5px solid #b9a369;padding:20px 20px 22px}
+header div,main{max-width:780px;margin:auto}
+header h1{font-size:24px;margin:5px 0 7px}header p{font-size:14px;margin:0;color:#d5e8dd}
+main{padding:24px 16px 45px}
+.card{background:white;border:1px solid #d5e1d8;border-radius:15px;padding:22px;margin-bottom:18px}
+button,.button{display:inline-block;background:#1e5946;color:white;border:0;border-radius:9px;padding:13px 19px;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;margin:4px 6px 5px 0}
+.secondary{background:#f7f2e4;color:#254736;border:1px solid #bdae83}
+.hint{font-size:13px;line-height:1.55;color:#415b4e}
+li{margin:10px 0;line-height:1.45}
+#preview{max-width:430px;margin:16px auto 0;background:#fff;box-shadow:0 3px 15px #0002}
+#preview svg{width:100%;height:auto;display:block}
+#message{min-height:20px;font-size:14px;font-weight:600}
+@media(max-width:520px){button,.button{display:block;width:100%;text-align:center}}
+</style>
+<script src="qrcode-generator.js" defer></script>
+<script src="fichas-personalizadas.js?v=20261108-teste-v4" defer></script>
+</head>
+<body>
+<header><div><small>LUMINA · PAINEL DE APRENDIZAGENS</small><h1>Ficha fictícia para testar o leitor V5</h1><p>Escola Sônia Maria • 2026 • Sem dados reais de estudantes</p></div></header>
+<main>
+<section class="card">
+<h2>Baixar a imagem para o teste</h2>
+<p>Esta ficha de exemplo contém um QR Code e marcações em X. Ela existe somente para testar o leitor, sem alterar o cadastro da escola.</p>
+<button type="button" id="download">⬇ Baixar imagem PNG</button>
+<button type="button" class="secondary" id="pdf">Imprimir ou salvar em PDF</button>
+<p id="message" role="status" aria-live="polite"></p>
+<p class="hint">A imagem será criada neste computador. Não é necessário entrar no painel nem informar dados pessoais.</p>
+</section>
+<section class="card">
+<h2>Depois de baixar</h2>
+<ol>
+<li>Abra o <a href="leitor-v5.html?v=20261108-qr-local" target="_blank" rel="noopener">Leitor V5</a>.</li>
+<li>Selecione o PNG que acabou de baixar.</li>
+<li>Clique em <strong>Analisar lote inteiro</strong>.</li>
+<li>Confira a indicação <strong>Pronta</strong> ou <strong>Revisar</strong>.</li>
+</ol>
+<p class="hint">Não envie essa ficha fictícia como avaliação oficial. O leitor processa o arquivo localmente no navegador.</p>
+</section>
+<section class="card">
+<h2>Prévia da ficha</h2>
+<div id="preview"></div>
+</section>
+</main>
+<script>
+'use strict';
+window.addEventListener('load',()=>{
+ const msg=document.getElementById('message');
+ const preview=document.getElementById('preview');
+ const button=document.getElementById('download');
+ const pdf=document.getElementById('pdf');
+ let svg=null;
+ try{
+   if(typeof window.LuminaFichas?.testFixtureMarkup!=='function')throw new Error('O gerador de ficha não carregou.');
+   const holder=document.createElement('div');
+   holder.innerHTML=window.LuminaFichas.testFixtureMarkup();
+   svg=holder.querySelector('svg');
+   if(!svg)throw new Error('Não foi possível montar a ficha de teste.');
+   preview.appendChild(svg.cloneNode(true));
+   msg.textContent='Ficha pronta para baixar.';
+ }catch(e){
+   button.disabled=true;pdf.disabled=true;
+   msg.textContent='Não foi possível carregar a ficha. Atualize a página e tente novamente.';
+ }
+ button.addEventListener('click',async()=>{
+   if(!svg)return;
+   button.disabled=true;
+   msg.textContent='Preparando PNG...';
+   let tempUrl=null;
+   try{
+      const copy=svg.cloneNode(true);
+      copy.setAttribute('xmlns','http://www.w3.org/2000/svg');
+      copy.setAttribute('width','1191');
+      copy.setAttribute('height','1684');
+      const text=new XMLSerializer().serializeToString(copy);
+      tempUrl=URL.createObjectURL(new Blob([text],{type:'image/svg+xml;charset=utf-8'}));
+      const im=new Image();
+      await new Promise((resolve,reject)=>{im.onload=resolve;im.onerror=reject;im.src=tempUrl;});
+      const canvas=document.createElement('canvas');canvas.width=1191;canvas.height=1684;
+      const context=canvas.getContext('2d');context.fillStyle='#ffffff';context.fillRect(0,0,canvas.width,canvas.height);
+      context.drawImage(im,0,0,canvas.width,canvas.height);
+      const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG não gerado.')),'image/png'));
+      const pngUrl=URL.createObjectURL(png);
+      const link=document.createElement('a');link.href=pngUrl;link.download='LUMINA_FICHA_FICTICIA_PARA_TESTE.png';
+      document.body.appendChild(link);link.click();link.remove();
+      msg.textContent='Imagem PNG preparada. Confira a pasta Downloads e abra o leitor V5.';
+      setTimeout(()=>URL.revokeObjectURL(pngUrl),30000);
+   }catch(e){msg.textContent='Não foi possível baixar nesta tentativa. Use a opção PDF ou outro navegador.';}
+   finally{if(tempUrl)URL.revokeObjectURL(tempUrl);button.disabled=false;}
+ });
+ pdf.addEventListener('click',()=>{
+   try{window.LuminaFichas.printTestSheet();msg.textContent='Ficha aberta para salvar em PDF.'}
+   catch(e){msg.textContent='Ative pop-ups para abrir a ficha em PDF.'}
+ });
+});
+</script>
+</body></html>
