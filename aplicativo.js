@@ -71,6 +71,8 @@ function assessments(d){
  let studentSection='';
  if(role==='director'){
    studentSection='<div class="card"><h2>Acompanhamento institucional</h2><p>Resultados individuais dos estudantes não são exibidos no perfil da direção.</p></div>';
+ } else if(role==='pedagogical_admin' && mode==='demo'){
+   studentSection='<div class="card"><h2>Pré-cadastro de estudantes</h2><p>Em modo demonstração, nenhuma matrícula real é consultada. Entre com uma conta institucional autorizada para conferir as listas da escola.</p></div>';
  } else if(role==='pedagogical_admin'){
    const pending=d.students.filter(s=>s.active===false).length;
    const verified=d.students.filter(s=>s.active===true).length;
@@ -109,7 +111,7 @@ function assessments(d){
    </ul></article>
  </div>
  <div class="card"><h2>Preparação para os registros</h2>
- <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. Os 450 registros recebidos estão em pré-cadastro aguardando conferência; os QR Codes e o vínculo das fichas ainda precisam ser preparados antes dos lançamentos reais.</p>
+ <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. As listas recebidas estão em pré-cadastro aguardando conferência; os QR Codes e o vínculo das fichas ainda precisam ser preparados antes dos lançamentos reais.</p>
  <p class="intro-note">Fluxo previsto: aplicação e marcação da ficha → envio protegido do arquivo → conferência pedagógica → validação → visualização consolidada. A etapa de envio e publicação ainda não está habilitada nesta versão.</p></div>
  ${studentSection}`;
 }
