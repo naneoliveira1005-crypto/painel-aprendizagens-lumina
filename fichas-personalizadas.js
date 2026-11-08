@@ -147,5 +147,9 @@ function printTestSheet(){
  }catch(err){popup.close();throw err;}
 }
 
-window.LuminaFichas={printSet,printGuide,printTestSheet,version:"2026-fichas-v3",pagesPerStudent:3};
+function testFixtureMarkup(){
+ const student={id:'TESTE-FICTICIO',display_name:'ESTUDANTE FICTÍCIO — NÃO É MATRÍCULA',classroom_id:'TURMA-TESTE',active:true,local_reference:'SON-26-ABCDEF123456'};
+ return marking(student,{id:'TURMA-TESTE',label:'1º A (TESTE)'},true);
+}
+window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,version:"2026-fichas-v4",pagesPerStudent:3};
 })();
