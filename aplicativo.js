@@ -49,7 +49,7 @@ function render(){
 }
 function home(d){
  let cycleCount=d.cycles.length, classCount=d.classrooms.length, studentCount=d.students.length, resultCount=d.results.length;
- const realWarning=mode==='live'?notice('As matrículas foram conferidas pela coordenação. Os <strong>7 registros provisórios do 2º A</strong> continuam separados e ainda não são resultados oficiais. A leitura de QR + X precisa da conferência de vínculo e da validação pedagógica antes de qualquer publicação.','info'):notice('As informações abaixo são fictícias ou estruturais para prévia de navegação. Nenhuma criança real é identificada.','info');
+ const realWarning=mode==='live'?notice('As matrículas foram conferidas pela coordenação. Os <strong>'+d.importRows.length+' registros provisórios</strong> continuam separados e ainda não são resultados oficiais. A leitura de QR + X precisa da conferência de vínculo e da validação pedagógica antes de qualquer publicação.','info'):notice('As informações abaixo são fictícias ou estruturais para prévia de navegação. Nenhuma criança real é identificada.','info');
  const classLines=d.classrooms.slice(0,5).map(c=>`<li><span><b>${clean(c.label)}</b><br><small>${clean(shiftLabel[c.shift]||c.shift)}</small></span><span class="chip grey">${mode==='demo'?'Exemplo':'Cadastrada'}</span></li>`).join('');
  let graph='';
  if(mode==='demo'){
@@ -58,7 +58,7 @@ function home(d){
  }else if(resultCount){
   const v=[1,2,3,4,5].map(x=>d.results.filter(r=>r.answers?.H==='H'+x).length);
   graph=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'].map((lab,i)=>`<div class="barrow"><span>${clean(lab)}</span><div class="bartrack"><span style="width:${Math.round((v[i]/Math.max(1,...v))*100)}%"></span></div><strong>${v[i]}</strong></div>`).join('');
- }else graph='<div class="empty">Ainda não existem resultados oficiais disponíveis para este perfil. Os sete registros de teste estão em validação separada.</div>';
+ }else graph='<div class="empty">Ainda não existem resultados oficiais disponíveis para este perfil. Os registros provisórios estão em validação separada.</div>';
  const counts = mode==='demo'?['16','—','—','0']: [classCount,d.students.filter(s=>s.active).length,resultCount,d.importRows.length];
  return `${realWarning}<div class="kpi-grid">${cardKpi(counts[0],'Turmas visíveis','Conforme a permissão')}${cardKpi(counts[1],mode==='live'?'Matrículas confirmadas':'Estudantes fictícios',mode==='live'?'QR individual vinculado ao cadastro':'Dados de demonstração')}${cardKpi(counts[2],'Avaliações oficiais','Resultados já validados')}${cardKpi(counts[3],'Fichas em validação','Somente coordenação pode consultar')}</div>
  <div class="twocol"><article class="card"><h2>Panorama da escrita</h2><p>${mode==='demo'?'Exemplo fictício de visualização':'Somente resultados oficiais autorizados'}</p>${graph}</article><article class="card"><h2>Turmas acompanhadas</h2><p>Organização das turmas e respectivos turnos.</p><ul class="eyelist">${classLines||'<li>Nenhuma turma liberada para este perfil.</li>'}</ul><button class="smallbtn" data-jump="turmas">Ver todas as turmas →</button></article></div>
@@ -300,6 +300,94 @@ function printQrCodes(classroomId){
  popup.focus();
 }
 
+
+let pedagogicalReviewMessage='';
+function formatImportedRow(row,view){
+ const student=view.students.find(s=>s.id===row.student_id);
+ if(!student||!student.active||student.local_reference!==row.qr_code)return '';
+ const klass=view.classrooms.find(c=>c.id===student.classroom_id);
+ const answer=row.answers&&typeof row.answers==='object'?row.answers:{};
+ const H={H1:'Pré-silábica',H2:'Silábica sem valor',H3:'Silábica com valor',H4:'Silábico-alfabética',H5:'Alfabética'};
+ const L={L1:'Reconhece letras',L2:'Lê letras isoladas',L3:'Lê sílabas simples',L4:'Lê sílabas complexas',L5:'Lê palavras',L6:'Lê frases simples',L7:'Lê frases complexas'};
+ const T1={T10:'Lê o texto de memória',T11:'Recita o texto de memória',T12:'Não lê o texto de memória'};
+ const T2={T20:'Leitura fluente',T21:'Leitura sem fluência',T22:'Não lê o texto narrativo'};
+ const math=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Tabelas e gráficos'];
+ const results={A:'Alcançou',P:'Parcialmente',N:'Não alcançou',NO:'Não observado'};
+ const line=(label,value)=>'<tr><th style="width:45%">'+clean(label)+'</th><td>'+clean(value||'Sem marcação — verificar')+'</td></tr>';
+ const reading=Array.isArray(answer.L)?answer.L.map(key=>L[key]||'').filter(Boolean).join('; '):'';
+ const language=line('Hipótese de escrita',H[answer.H])+line('Habilidades de leitura',reading)+
+  line('Texto de memória',T1[answer.T1])+line('Texto narrativo',T2[answer.T2]);
+ const mathematics=math.map((label,i)=>{
+  const key='M'+(i+1),value=String(answer[key]||'');
+  const mark=value.startsWith(key+'_')?value.slice(key.length+1):'';
+  return line(key+' — '+label,results[mark]);
+ }).join('');
+ const ready=row.validation_status==='ready_for_commit';
+ const button=!ready&&row.validation_status==='awaiting_pedagogical_review'?
+  '<button type="button" class="smallbtn solid" data-review-ready="'+clean(row.id)+'">Concluir conferência desta ficha (não publica)</button>':'';
+ const status=ready?'Conferência concluída · ainda não publicada':'Aguardando conferência pedagógica';
+ return '<details style="border:1px solid #dce6de;border-radius:10px;padding:13px;margin:12px 0;background:white">'+
+  '<summary style="cursor:pointer"><strong>'+clean(student.display_name)+'</strong> · '+clean(klass?.label||'Turma')+' · '+clean(status)+'</summary>'+
+  '<p class="intro-note" style="margin-top:12px"><strong>Código da ficha:</strong> '+clean(row.qr_code)+
+  '. Compare estes dados com a ficha original; a fotografia não foi armazenada no painel.</p>'+
+  '<h3 style="font-size:14px">Língua Portuguesa</h3>'+
+  '<div class="tablewrap"><table><tbody>'+language+'</tbody></table></div>'+
+  '<h3 style="font-size:14px;margin-top:18px">Matemática</h3>'+
+  '<div class="tablewrap"><table><tbody>'+mathematics+'</tbody></table></div>'+
+  (ready?'<p class="intro-note"><strong>Conferência registrada.</strong> A publicação oficial continua desabilitada.</p>':
+  '<p class="intro-note">Só conclua a conferência se nome, turma, QR e todas as marcações corresponderem à ficha original.</p>')+
+  '<div class="buttonrow">'+button+'</div></details>';
+}
+function importedReviewPanel(view){
+ if(mode!=='live'||role!=='pedagogical_admin')return '';
+ const items=view.importRows.filter(r=>r.validation_status==='awaiting_pedagogical_review'||r.validation_status==='ready_for_commit');
+ const linked=items.filter(r=>view.students.some(s=>s.id===r.student_id&&s.active&&s.local_reference===r.qr_code));
+ const missing=view.importRows.filter(r=>!r.student_id).length;
+ const grouped=view.batches.map(b=>{
+  const rows=linked.filter(r=>r.batch_id===b.id);
+  if(!rows.length)return '';
+  const klass=view.classrooms.find(c=>c.id===b.classroom_id);
+  return '<h3 style="margin-top:20px">'+clean(klass?.label||'Turma')+' — '+rows.length+' ficha(s)</h3>'+
+   rows.map(r=>formatImportedRow(r,view)).join('');
+ }).join('');
+ return '<div class="card"><h2>Conferência pedagógica — fichas armazenadas</h2>'+
+  '<p>Acesse cada estudante, confira o que o leitor registrou e, somente depois de comparar com a ficha original, conclua a conferência. <strong>Nada será publicado automaticamente.</strong></p>'+
+  (pedagogicalReviewMessage?notice(clean(pedagogicalReviewMessage),'info'):'')+
+  (grouped||'<p class="intro-note">Nenhuma ficha com matrícula vinculada aguardando revisão.</p>')+
+  (missing?notice('<strong>'+missing+' ficha(s) de lote anterior</strong> ainda sem vínculo de matrícula. Não podem ser validadas nesta etapa.','info'):'')+
+  '</div>';
+}
+async function confirmImportedReview(id,button){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const row=loaded.importRows.find(r=>r.id===id);
+ if(!row||row.validation_status!=='awaiting_pedagogical_review')return;
+ const student=loaded.students.find(s=>s.id===row.student_id&&s.active&&s.local_reference===row.qr_code);
+ if(!student)return;
+ if(!window.confirm('Você comparou a ficha ORIGINAL de '+student.display_name+' com os resultados exibidos, incluindo todos os X? Esta ação registra apenas a CONFERÊNCIA PEDAGÓGICA, sem publicar resultados.'))return;
+ button.disabled=true;button.textContent='Registrando conferência...';
+ const previousUser=profile.user_id;
+ try{
+  const {data:auth,error:authError}=await api.auth.getUser();
+  if(authError||auth?.user?.id!==previousUser)throw new Error('A sessão institucional precisa ser renovada.');
+  const {data,error}=await api.from('assessment_import_rows')
+   .update({validation_status:'ready_for_commit',validation_note:'Conferência pedagógica concluída pela coordenação. Aguardando etapa de publicação oficial.'})
+   .eq('id',id).eq('validation_status','awaiting_pedagogical_review')
+   .select('id,validation_status');
+  if(error)throw new Error(error.message||'O banco recusou a conferência.');
+  if(!Array.isArray(data)||data.length!==1||data[0].validation_status!=='ready_for_commit')
+   throw new Error('O banco não confirmou a atualização. Atualize a página antes de tentar novamente.');
+  if(mode!=='live'||profile?.user_id!==previousUser)return;
+  pedagogicalReviewMessage='Conferência de '+student.display_name+' registrada, sem publicação de resultados.';
+  await refreshLive();
+ }catch(err){
+  if(mode==='live'&&profile?.user_id===previousUser){
+   pedagogicalReviewMessage='Não foi possível concluir a conferência: '+(err?.message||'erro não identificado');
+   const area=$('pedagogicalReviewFeedback');if(area)area.textContent=pedagogicalReviewMessage;
+   else {button.disabled=false;button.textContent='Concluir conferência desta ficha (não publica)';}
+  }
+ }
+}
+
 function batches(d){
  const admin=role==='pedagogical_admin';
  const savedPilot=pilotStageMessage?notice(clean(pilotStageMessage),'info'):'';
@@ -307,6 +395,7 @@ function batches(d){
  return `${savedPilot}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A importação oficial continua bloqueada até concluir os testes de reconhecimento, vinculação e permissões.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261109-digitalizacao-drive-v13" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
  ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Linhas provisórias acessíveis neste perfil: ${d.importRows.length}. Não representam avaliações publicadas.</p>`:''}</div>`:''}
+ ${admin?importedReviewPanel(d):''}
  <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados. A coordenação poderá registrar um piloto com até dez fichas da mesma turma após a conferência, aguardando validação pedagógica.</p></div>`;
 }
 function team(d){
@@ -580,7 +669,7 @@ async function refreshLive(){
    profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
-   profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status,student_id,qr_code','none'):Promise.resolve([])
+   profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status,student_id,qr_code,answers,validation_note','none'):Promise.resolve([])
  ]);
  if(mode!=='live'||profile?.user_id!==currentUser)return;
  const [classrooms,cycles,students,official,staff,staffLinks,batches,importRows]=results;
@@ -661,7 +750,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261109-digitalizacao-drive-v13';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261109-digitalizacao-drive-v13';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
