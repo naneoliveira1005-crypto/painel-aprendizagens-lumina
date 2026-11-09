@@ -1,0 +1,41 @@
+
+/* Lumina — gráficos de aprendizagem 2026. Somente dados oficiais do usuário autenticado. */
+.learning-chart {margin-top:14px}
+.learning-chart .chart-heading {font-size:13px;color:#36584b;margin-bottom:12px}
+.learning-chart .chart-rows {display:flex;flex-direction:column;gap:12px}
+.learning-chart .chart-line {display:grid;grid-template-columns:minmax(135px,1.1fr) minmax(95px,2fr) 34px;align-items:center;gap:12px}
+.learning-chart .chart-label {font-size:12px;line-height:1.4;color:#29493c}
+.learning-chart .chart-count {font-weight:700;color:#173e33;text-align:right;font-size:13px;font-variant-numeric:tabular-nums}
+.learning-chart .chart-track {height:14px;background:#edf2ee;border-radius:100px;overflow:hidden;display:flex;position:relative}
+.learning-chart .chart-fill {height:100%;border-radius:100px;display:block;min-width:0}
+.learning-chart .chart-fill--green {background:#326c54}
+.learning-chart .chart-fill--gold {background:#bc9f61}
+.learning-chart .chart-fill--light {background:#80aa94}
+.learning-chart .chart-fill--deep {background:#183e35}
+.learning-chart .chart-fill--sand {background:#ddd2ad}
+.learning-chart .chart-subtitle {font-size:12px;color:#67786e;margin:6px 0 14px;line-height:1.5}
+.learning-chart .chart-coverage {height:18px;margin:14px 0 7px}
+.learning-chart .chart-math-rows {display:flex;flex-direction:column;gap:18px}
+.learning-chart .chart-math-label {font-size:13px;color:#23493b;display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 8px}
+.learning-chart .chart-math-label strong {font-weight:700}
+.learning-chart .chart-math-track {height:20px;border-radius:7px;overflow:hidden;background:#edf2ee;display:flex}
+.learning-chart .chart-math-segment {height:100%;display:block;min-width:0}
+.learning-chart .chart-math-segment:first-child {border-radius:7px 0 0 7px}
+.learning-chart .chart-math-segment:last-child {border-radius:0 7px 7px 0}
+.learning-chart .chart-math-legend {display:flex;gap:10px 18px;flex-wrap:wrap;margin:0 0 18px}
+.learning-chart .chart-legend-item {display:flex;align-items:center;gap:6px;font-size:12px;color:#3f5c50}
+.learning-chart .chart-legend-swatch {width:12px;height:12px;display:inline-block;border-radius:3px;flex:none}
+.learning-chart .level-a {background:#2b7355}
+.learning-chart .level-p {background:#c4a056}
+.learning-chart .level-n {background:#c16c64}
+.learning-chart .level-no {background:#a8b6ad}
+.learning-chart .chart-note {font-size:12px;line-height:1.5;color:#5a7265;margin:12px 0 0}
+.learning-chart .chart-math-tallies {font-size:11px;color:#5c6e64;line-height:1.5;margin:5px 0 0}
+.learning-chart .chart-percent {font-size:14px;color:#214a3b;font-weight:700}
+.learning-chart .chart-divider {border:0;border-top:1px solid #e4ece7;margin:16px 0}
+@media(max-width:700px){
+ .learning-chart .chart-line{grid-template-columns:minmax(105px,1fr) minmax(60px,1.15fr) 27px;gap:8px}
+ .learning-chart .chart-label{font-size:11px}
+ .learning-chart .chart-math-label{font-size:12px}
+ .learning-chart .chart-math-track{height:16px}
+}
