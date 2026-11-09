@@ -263,9 +263,138 @@ function getAnswersFromGrid(all){
    aligned:true,candidates:boxes.length,thresholds,method:'grade de quadradinhos'};
 }
 
+
+function luminaCenters(values,k){
+ if(values.length<k*2)return null;
+ const ordered=values.slice().sort((a,b)=>a-b);
+ const min=ordered[0],max=ordered[ordered.length-1];
+ let means=Array.from({length:k},(_,i)=>min+(max-min)*i/(k-1));
+ let counts=[];
+ for(let iteration=0;iteration<40;iteration++){
+  const sums=Array(k).fill(0);counts=Array(k).fill(0);
+  for(const value of values){
+   let idx=0,dist=Infinity;
+   for(let j=0;j<k;j++){const d=Math.abs(value-means[j]);if(d<dist){idx=j;dist=d}}
+   sums[idx]+=value;counts[idx]++;
+  }
+  if(counts.some(v=>v===0))return null;
+  const next=means.map((_,i)=>sums[i]/counts[i]);
+  const changed=next.some((v,i)=>Math.abs(v-means[i])>.01);
+  means=next;
+  if(!changed)break;
+ }
+ means.sort((a,b)=>a-b);
+ const spacing=means.slice(1).map((v,i)=>v-means[i]);
+ const middle=median(spacing);
+ if(middle<6||spacing.some(d=>Math.abs(d-middle)>middle*.32))return null;
+ return {means,counts,step:middle};
+}
+function luminaAffine(a,b){
+ if(a.length!==b.length||a.length<2)return null;
+ const ma=a.reduce((v,x)=>v+x,0)/a.length;
+ const mb=b.reduce((v,x)=>v+x,0)/b.length;
+ let den=0,num=0;
+ for(let i=0;i<a.length;i++){den+=(a[i]-ma)**2;num+=(a[i]-ma)*(b[i]-mb)}
+ if(!den)return null;
+ const scale=num/den;
+ return {scale,offset:mb-scale*ma};
+}
+function getAnswersFromMathAnchors(all){
+ const {b,w,h,boxes}=all,cell=10*w/PAGE[0];
+ // A grade M1–M7 é uma régua impressa com quatro colunas e sete linhas.
+ // Uma borda ausente não deve deslocar as demais respostas.
+ const shapes=boxes.filter(q=>q.w>=cell*.72&&q.h>=cell*.72&&
+  q.w<=cell*1.53&&q.h<=cell*1.53&&
+  q.w/q.h>.75&&q.w/q.h<1.34);
+ const math=shapes.filter(q=>q.x>.46*w&&q.x<.91*w&&q.y>.48*h&&q.y<.73*h);
+ if(math.length<24||math.length>37)return null;
+ const xc=luminaCenters(math.map(q=>q.x),4);
+ const yc=luminaCenters(math.map(q=>q.y),7);
+ if(!xc||!yc||xc.counts.some(v=>v<5)||yc.counts.some(v=>v<3))return null;
+ const xFit=luminaAffine([350,405,460,515],xc.means);
+ const yFit=luminaAffine(Array.from({length:7},(_,i)=>445+i*19),yc.means);
+ if(!xFit||!yFit||xFit.scale<=0||yFit.scale<=0||
+    xFit.scale/yFit.scale<.7||xFit.scale/yFit.scale>1.32)return null;
+ const predicted={};
+ const labels=[...H,...L,...T1,...T2,...M.flat()];
+ for(const key of labels){
+  const p=BOXES[key];if(!p)return null;
+  const yy=PAGE[1]-p.y-p.size;
+  predicted[key]={x:xFit.offset+xFit.scale*p.x,y:yFit.offset+yFit.scale*yy};
+ }
+ const groups={H,L,T:[...T1,...T2],M:M.flat()},usedGlobal=new Set();
+ const sampled={},aligned={},details={},unmatched=[];
+ const expectedWidth=median(math.map(q=>q.w));
+ const expectedHeight=median(math.map(q=>q.h));
+ const find=(x,y,chosen,tolX,tolY)=>{
+  let best=null,bestDist=Infinity;
+  for(const candidate of shapes){
+   if(chosen.has(candidate))continue;
+   const dx=(candidate.x-x)/tolX,dy=(candidate.y-y)/tolY;
+   const dist=dx*dx+dy*dy;
+   if(Math.abs(dx)>1||Math.abs(dy)>1||dist>=bestDist)continue;
+   best=candidate;bestDist=dist;
+  }
+  return best;
+ };
+ for(const [group,keys] of Object.entries(groups)){
+  const provisional=new Map(),reserved=new Set();
+  for(const key of keys){
+   const p=predicted[key];
+   const candidate=find(p.x,p.y,reserved,Math.max(14,xc.step*.28),Math.max(11,yc.step*.55));
+   if(candidate){provisional.set(key,candidate);reserved.add(candidate)}
+  }
+  const minMatches={H:4,L:6,T:5,M:23}[group];
+  if(provisional.size<minMatches)return null;
+  const dx=median(Array.from(provisional,([k,q])=>q.x-predicted[k].x));
+  const dy=median(Array.from(provisional,([k,q])=>q.y-predicted[k].y));
+  const matches=new Map();const reserved2=new Set();
+  for(const key of keys){
+   const p=predicted[key];
+   const candidate=find(p.x+dx,p.y+dy,reserved2,Math.max(10,xc.step*.19),Math.max(8,yc.step*.45));
+   if(candidate){matches.set(key,candidate);reserved2.add(candidate)}
+  }
+  if(matches.size<minMatches)return null;
+  aligned[group]=matches.size;
+  for(const key of keys){
+   const p=predicted[key];
+   const q=matches.get(key)||{x:Math.round(p.x+dx),y:Math.round(p.y+dy),
+    w:Math.round(expectedWidth),h:Math.round(expectedHeight)};
+   if(!matches.has(key))unmatched.push(key);
+   const margin=Math.max(2,Math.floor(Math.min(q.w,q.h)*.20));
+   let ink=0,total=0;
+   for(let yy=q.y+margin;yy<q.y+q.h-margin;yy++){
+    for(let xx=q.x+margin;xx<q.x+q.w-margin;xx++){
+     if(xx>=0&&yy>=0&&xx<w&&yy<h){ink+=b[yy*w+xx];total++}
+    }
+   }
+   if(!total)return null;
+   sampled[key]=ink/total;
+  }
+  details[group]={dx,dy};
+ }
+ if(unmatched.length>2)return null; // Evita inventar marcações com folha danificada.
+ const answers={},thresholds={};
+ for(const [name,key,options] of GROUPS){
+  const ranked=options.map(k=>({key:k,rate:sampled[k]||0})).sort((a,b)=>b.rate-a.rate);
+  const low=median(options.map(k=>sampled[k]||0));
+  thresholds[key]=Math.max(.26,low+.10);
+  answers[key]=ranked[0]?.rate>=thresholds[key]&&
+    ranked[0].rate-(ranked[1]?.rate||0)>=.18?ranked[0].key:'';
+ }
+ const blankBaseline=median(L.map(k=>sampled[k]||0).filter(v=>v<.25));
+ thresholds.L=Math.max(.27,blankBaseline+.14);
+ answers.L=L.filter(k=>(sampled[k]||0)>=thresholds.L);
+ // Se o leitor reconheceu a grade, mas alguma resposta é ambígua, manter "Revisar".
+ const unresolved=GROUPS.some(([,key,opts])=>!opts.includes(answers[key]));
+ return {answers,scores:sampled,thresholds,align:aligned,aligned:true,
+  candidates:boxes.length,method:'grade matemática recalibrada',
+  confidence:unresolved?'review':'high',unmatched};
+}
+
 function getAnswers(canvas){
  const all=bwCandidates(canvas);
- const matched=getAnswersFromGrid(all);if(matched)return matched;
+ const matched=getAnswersFromMathAnchors(all)||getAnswersFromGrid(all);if(matched)return matched;
  const scores={},align={};
  // Matemática contém 28 pontos de ancoragem: usamos sua geometria também como
  // ponto de partida para blocos menores, evitando trocar as linhas entre si.
