@@ -373,7 +373,7 @@ function getAnswersFromMathAnchors(all){
   }
   details[group]={dx,dy};
  }
- if(unmatched.length>2)return null; // Evita inventar marcações com folha danificada.
+ if(unmatched.length>2||unmatched.some(k=>!k.startsWith('M')))return null; // A falta de qualquer caixa de leitura/hipótese/texto não pode virar leitura correta.
  const answers={},thresholds={};
  for(const [name,key,options] of GROUPS){
   const ranked=options.map(k=>({key:k,rate:sampled[k]||0})).sort((a,b)=>b.rate-a.rate);
@@ -394,7 +394,7 @@ function getAnswersFromMathAnchors(all){
 
 function getAnswers(canvas){
  const all=bwCandidates(canvas);
- const matched=getAnswersFromMathAnchors(all)||getAnswersFromGrid(all);if(matched)return matched;
+ const matched=getAnswersFromGrid(all)||getAnswersFromMathAnchors(all);if(matched)return matched;
  const scores={},align={};
  // Matemática contém 28 pontos de ancoragem: usamos sua geometria também como
  // ponto de partida para blocos menores, evitando trocar as linhas entre si.
