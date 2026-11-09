@@ -6,7 +6,7 @@
 :root{--green:#153e34;--green2:#28634e;--mint:#ecf4f0;--gold:#b49a58;--ink:#20332e;--muted:#5e746b;--line:#dbe6e1;--bg:#f5f7f5;--red:#a13636;--yellow:#946d21;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}h1,h2,h3,p{margin-top:0}.pagehead{background:var(--green);color:#fff;padding:25px max(20px,calc((100vw - 1220px)/2));border-bottom:5px solid var(--gold)}.pagehead .brand{letter-spacing:2px;text-transform:uppercase;opacity:.8;font-size:11px;font-weight:700}.pagehead h1{font-size:clamp(23px,3vw,33px);margin:8px 0}.pagehead p{margin:0;color:#d6e7df}.wrap{max-width:1220px;margin:25px auto;padding:0 16px 40px}.note{border:1px solid #e6d7b2;background:#fffdf7;border-radius:12px;padding:13px 16px;font-size:14px;line-height:1.5;margin-bottom:19px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:0 3px 12px rgba(25,65,50,.03);min-width:0}.panel h2{font-size:19px;margin-bottom:6px}.help{font-size:13px;color:var(--muted);line-height:1.5}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:9px;background:var(--green2);color:white;padding:11px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px}button.alt{border:1px solid var(--green2);color:var(--green2);background:white}button:disabled{opacity:.46;cursor:not-allowed}input[type=file]{max-width:100%;border:1px dashed #b7c8bf;padding:14px;background:#f9fcfa;border-radius:10px;width:100%}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:19px 0}.metric{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px}.metric b{display:block;font-size:27px;color:var(--green)}.metric span{font-size:12px;color:var(--muted)}progress{width:100%;height:12px;accent-color:var(--green2)}.long{grid-column:1/-1}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:15px 0}.toolbar select{width:auto}.scroll{overflow:auto;border:1px solid var(--line);border-radius:11px;max-height:410px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e5ece8;white-space:nowrap}th{position:sticky;top:0;background:#f0f5f1;z-index:1;font-size:12px;color:#4c675b}tr:hover td{background:#f7faf8}tbody tr{cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:700;font-size:11px}.ok{background:#e1f3e8;color:#1e6944}.err{background:#fff2dc;color:#875e12}.pending{background:#eff1f0;color:#5f6f67}.selected td{background:#e7f1ec!important}.review{display:grid;grid-template-columns:1fr 1fr;gap:20px}.preview{width:auto;height:auto;max-width:100%;max-height:650px;background:#f7f7f7;border:1px solid var(--line);border-radius:9px;display:block;margin:0 auto;cursor:crosshair} .crop-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px} .crop-actions button{font-size:12px} .crop-help{font-size:13px;background:#edf4ef;border-radius:9px;padding:12px;margin:9px 0;line-height:1.55}.field{margin:12px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field select{border:1px solid #bacdc3;border-radius:9px;padding:9px;max-width:100%;width:100%;background:white;color:var(--ink)}.hint{font-size:12px;color:var(--muted)}.message{margin-top:10px;font-size:13px;min-height:20px}.checkboxes{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}.checkboxes label{font-size:12px}.footer{font-size:12px;color:#63746e;margin-top:23px}#reviewMessage{white-space:pre-line}.hide{display:none!important}@media(max-width:860px){.grid,.review{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.panel{padding:16px}}@media(max-width:480px){.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 <script src="jsqr-fallback.js"></script>
-<script src="auto-a4.js?v=20261108-fundo-claro-v5"></script>
+<script src="auto-a4.js?v=20261109-document-scan-v6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
@@ -430,38 +430,52 @@ function markSummary(entry){
 }
 function qrPayloadToId(v){const m=/^SONIA26\|(SON-26-[A-F0-9]{12})\|FICHA-V1$/.exec(v||'');return m?m[1]:null}
 async function readQr(canvas){
- // Prioriza detecção nativa e usa jsQR local como alternativa em Chromebooks/computadores sem BarcodeDetector.
+ // Scanner documental: QR em tamanho original e em RECORTES AMPLIADOS.
+ // Fotos 9:16 normalmente têm papel A4 no centro, e não podem ser encolhidas
+ // para se ajustarem às dimensões da página antes de ler o QR.
+ const regions=[
+  [.52,.07,.47,.33,920],   // foto com papel e mesa ao redor
+  [.60,.08,.39,.26,860],   // QR alto à direita, foco preciso
+  [.56,.01,.43,.35,860],   // folha já digitalizada/cortada
+  [.40,0,.60,.43,980],     // variação de bordas e inclinação
+  [0,0,1,1,1200]          // leitura de emergência da página inteira
+ ];
+ const sourceW=canvas.width,sourceH=canvas.height;
+ const makeRegion=(spec)=>{
+  const [rx,ry,rw,rh,target]=spec;
+  const sx=Math.round(sourceW*rx),sy=Math.round(sourceH*ry);
+  const sw=Math.max(1,Math.min(sourceW-sx,Math.round(sourceW*rw)));
+  const sh=Math.max(1,Math.min(sourceH-sy,Math.round(sourceH*rh)));
+  const factor=Math.min(3.2,Math.max(1,target/Math.max(sw,sh)));
+  const w=Math.round(sw*factor),h=Math.round(sh*factor);
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  c.getContext('2d',{willReadFrequently:true}).drawImage(canvas,sx,sy,sw,sh,0,0,w,h);
+  return c;
+ };
+ let detector=null;
  if(typeof window.BarcodeDetector==='function'){
-  try{
-   const detector=new window.BarcodeDetector({formats:['qr_code']});
-   let hits=await detector.detect(canvas);
-   if(!hits.length){
-    const crop=document.createElement('canvas');crop.width=700;crop.height=700;
-    crop.getContext('2d').drawImage(canvas,canvas.width*(474/595),canvas.height*(27/842),canvas.width*(105/595),canvas.height*(104/842),0,0,700,700);
-    hits=await detector.detect(crop);
-   }
-   const matches=[...new Set(hits.map(h=>qrPayloadToId(h.rawValue)).filter(Boolean))];
-   if(matches.length===1)return matches[0];
-  }catch(error){console.warn('Leitura QR nativa indisponível; ativando alternativa local.')}
+  try{detector=new window.BarcodeDetector({formats:['qr_code']})}catch(_){}
  }
- if(typeof window.jsQR==='function'){
-  try{
-   const cv=document.createElement('canvas');cv.width=700;cv.height=700;
-   const ctx=cv.getContext('2d',{willReadFrequently:true});
-   ctx.drawImage(canvas,canvas.width*(474/595),canvas.height*(27/842),canvas.width*(105/595),canvas.height*(104/842),0,0,700,700);
-   const pixelData=ctx.getImageData(0,0,700,700);
-   const hit=window.jsQR(pixelData.data,700,700,{inversionAttempts:'attemptBoth'});
-   const extracted=hit?qrPayloadToId(hit.data):null;
-   if(extracted)return extracted;
-   // Última tentativa: foto desalinhada, QR fora da região normalmente esperada.
-   const scale=Math.min(1,900/canvas.width,1300/canvas.height);
-   const w=Math.max(1,Math.round(canvas.width*scale)),h=Math.max(1,Math.round(canvas.height*scale));
-   cv.width=w;cv.height=h;const area=cv.getContext('2d',{willReadFrequently:true});
-   area.drawImage(canvas,0,0,w,h);
-   const all=area.getImageData(0,0,w,h);
-   const found=window.jsQR(all.data,w,h,{inversionAttempts:'dontInvert'});
-   return found?qrPayloadToId(found.data)||'':'';
-  }catch(error){console.warn('Não foi possível ler o QR local.',error?.message);return ''}
+ for(const [i,spec] of regions.entries()){
+  const part=makeRegion(spec);
+  if(detector){
+   try{
+    const hits=await detector.detect(part);
+    const matches=[...new Set(hits.map(h=>qrPayloadToId(h.rawValue)).filter(Boolean))];
+    if(matches.length===1)return matches[0];
+    if(matches.length>1)return ''; // Foto com mais de uma ficha: revisar.
+   }catch(_){}
+  }
+  if(typeof window.jsQR==='function'){
+   try{
+    const ctx=part.getContext('2d',{willReadFrequently:true});
+    const pixels=ctx.getImageData(0,0,part.width,part.height);
+    const hit=window.jsQR(pixels.data,part.width,part.height,
+      {inversionAttempts:i===regions.length-1?'dontInvert':'attemptBoth'});
+    const valid=hit?qrPayloadToId(hit.data):null;
+    if(valid)return valid;
+   }catch(_){}
+  }
  }
  return '';
 }
@@ -518,41 +532,55 @@ async function normalizeByQr(canvas){
 }
 async function analyzeOne(entry){
  const original=await renderEntry(entry,true);
- const originalShape=Math.abs(original.width/original.height-PAGE[0]/PAGE[1])>.06;
- let selected=null,frame=null,autoAttempted=false;
- // Toda foto de celular é enquadrada antes da leitura sem exigir marcação manual de cantos.
- if(entry.kind==='img'&&typeof window.LuminaAutoA4?.detect==='function'){
+ // Primeiro tenta reconhecer a própria ficha, sem cortar ou deformar a foto.
+ // A proporção da FOTO nunca deve ser confundida com a proporção da FOLHA.
+ const originalRead=getAnswers(original);
+ const originalCode=await readQr(original);
+ const originalComplete=originalRead.aligned&&!!originalCode&&
+  GROUPS.every(([,key,choices])=>choices.includes(originalRead.answers?.[key]));
+ let winner={
+  canvas:original,reading:originalRead,code:originalCode,
+  pageLocated:originalComplete,score:readingQuality(originalRead,originalCode,false),
+  method:originalComplete?'QR e grade reconhecidos diretamente na foto':''
+ };
+ // A digitalização tipo Drive é uma segunda via: localiza as quatro bordas,
+ // corrige a perspectiva e só então reinterpreta a grade de X.
+ if(!originalComplete&&entry.kind==='img'&&
+    typeof window.LuminaAutoA4?.detect==='function'){
   const found=window.LuminaAutoA4.detect(original);
-  if(found&&found.confidence>=.6){
-   autoAttempted=true;
+  if(found&&found.confidence>=.60){
    try{
-    const straightened=quadProjection(found.corners,original);
-    const normalized=await normalizeByQr(straightened);
-    const readyCanvas=normalized.canvas;
-    const read=getAnswers(readyCanvas);
-    const qr=normalized.code||await readQr(readyCanvas);
-    const score=readingQuality(read,qr,false);
-    selected={canvas:readyCanvas,reading:read,code:qr,shape:false,score};
-    if(score>=42)frame={...found,method:found.method+(normalized.found?' + calibração QR':'')};
-   }catch(err){console.warn('Enquadramento automático não concluído',err?.message);}
+    const straight=quadProjection(found.corners,original);
+    const adjusted=await normalizeByQr(straight);
+    const scan=adjusted.canvas;
+    const grid=getAnswers(scan);
+    const code=adjusted.code||originalCode||await readQr(scan);
+    const score=readingQuality(grid,code,false);
+    const complete=grid.aligned&&!!code&&GROUPS.every(([,key,choices])=>
+      choices.includes(grid.answers?.[key]));
+    if(complete||score>winner.score){
+     winner={canvas:scan,reading:grid,code,pageLocated:true,score,
+      method:'Digitalização automática A4 ('+found.method+
+        (adjusted.found?', com calibração QR':'')+')'};
+    }
+   }catch(error){
+    console.warn('Digitalização automática indisponível; preservando leitura original.',error?.message);
+   }
   }
  }
- if(!frame){
-  const read=getAnswers(original),qr=await readQr(original);
-  const baseline={canvas:original,reading:read,code:qr,shape:originalShape,
-   score:readingQuality(read,qr,originalShape)};
-  if(!selected||baseline.score>=selected.score)selected=baseline;
-  else frame={method:'enquadramento automático',confidence:1};
- }
- entry.correctedCanvas=frame?selected.canvas:null;
- entry.autoCropStatus=frame?'Folha enquadrada automaticamente ('+String(frame.method||'A4')+');':'';
- entry.answers=selected.reading.answers;entry.scores=selected.reading.scores;
- entry.thresholds=selected.reading.thresholds;entry.align=selected.reading.align;
- entry.alignmentWarning=!selected.reading.aligned;entry.shapeWarning=selected.shape;
- entry.code=selected.code;
+ entry.correctedCanvas=winner.canvas===original?null:winner.canvas;
+ entry.autoCropStatus=winner.method?winner.method+';':'';
+ entry.answers=winner.reading.answers;entry.scores=winner.reading.scores;
+ entry.thresholds=winner.reading.thresholds;entry.align=winner.reading.align;
+ entry.alignmentWarning=!winner.reading.aligned;
+ // A4 refere-se ao papel, não à foto JPG. Se QR + grade coincidem,
+ // a mesa ao redor da folha não é motivo para rejeitar a avaliação.
+ entry.shapeWarning=!winner.pageLocated&&
+  Math.abs(original.width/original.height-PAGE[0]/PAGE[1])>.06;
+ entry.code=winner.code;
  recalcState(entry);
- if(!frame&&entry.kind==='img'&&entry.state==='review'){
-  entry.issues.push(autoAttempted?'Enquadramento automático insuficiente; foto precisa de diagnóstico':'Folha não localizada automaticamente; a foto precisa de diagnóstico');
+ if(entry.state==='review'&&entry.kind==='img'&&!winner.pageLocated){
+  entry.issues.push('Papel não localizado com confiança; a ficha permanece em revisão');
  }
 }
 async function analyze(){
