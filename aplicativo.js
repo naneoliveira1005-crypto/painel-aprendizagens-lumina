@@ -72,6 +72,43 @@ function classes(d){
 }
 
 let selectedResultsClass='';
+
+function learningBars(items,denominator){
+ const size=Math.max(1,Number(denominator)||1);
+ return '<div class="learning-chart"><div class="chart-rows">'+items.map((item,i)=>{
+  const label=String(item[0]),count=Math.max(0,Number(item[1])||0);
+  const width=Math.min(100,100*count/size);
+  const styles=['chart-fill--green','chart-fill--gold','chart-fill--light','chart-fill--deep','chart-fill--sand'];
+  return '<div class="chart-line">'+
+    '<span class="chart-label">'+clean(label)+'</span>'+
+    '<div class="chart-track" role="img" aria-label="'+clean(label+': '+count+' de '+denominator)+'">'+
+    '<span class="chart-fill '+styles[i%styles.length]+'" style="width:'+width.toFixed(2)+'%"></span></div>'+
+    '<span class="chart-count">'+count+'</span></div>';
+ }).join('')+'</div></div>';
+}
+function learningMathChart(records,mathLabels){
+ const n=records.length;
+ if(!n)return '';
+ const legend=[['level-a','Alcançou'],['level-p','Parcialmente'],['level-n','Não alcançou'],['level-no','Não observado']]
+  .map(([theme,label])=>'<span class="chart-legend-item"><span class="chart-legend-swatch '+theme+'"></span>'+label+'</span>').join('');
+ const bar=mathLabels.map((label,i)=>{
+  const key='M'+(i+1);
+  const marks=['A','P','N','NO'];
+  const counts=marks.map(mark=>records.filter(r=>r.answers?.[key]===key+'_'+mark).length);
+  const themes=['level-a','level-p','level-n','level-no'];
+  const segments=counts.map((count,j)=>'<span class="chart-math-segment '+themes[j]+'" style="width:'+((100*count/n).toFixed(2))+'%"></span>').join('');
+  const textCounts=counts.map((qty,j)=>['A','P','N','NO'][j]+': '+qty).join(' · ');
+  return '<div class="chart-math-item">'+
+   '<div class="chart-math-label"><strong>'+clean(key)+'</strong> <span>'+clean(label)+'</span></div>'+
+   '<div class="chart-math-track" role="img" aria-label="'+clean(key+' '+label+': '+textCounts)+'">'+segments+'</div>'+
+   '<div class="chart-math-tallies">'+clean(textCounts)+'</div></div>';
+ }).join('');
+ return '<div class="learning-chart"><p class="chart-subtitle">Cada barra representa somente as '+n+' avaliações oficiais desta turma.</p>'+
+  '<div class="chart-math-legend">'+legend+'</div>'+
+  '<div class="chart-math-rows">'+bar+'</div>'+
+  '<p class="chart-note">Os segmentos indicam quantidades, não notas. Os estudantes sem ficha publicada não entram no gráfico.</p></div>';
+}
+
 function officialResultsDashboard(d){
  if(mode==='demo')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>Disponível apenas para usuários autorizados, a partir de resultados oficiais.</p></div>';
  if(role==='director')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>O acesso da direção não exibe dados individuais nesta etapa. Indicadores agregados poderão ser disponibilizados após a configuração específica desse perfil.</p></div>';
@@ -114,6 +151,10 @@ function officialResultsDashboard(d){
    return '<tr><td><strong>'+clean(key)+'</strong> — '+clean(label)+'</td>'+
     '<td>'+count('A')+'</td><td>'+count('P')+'</td><td>'+count('N')+'</td><td>'+count('NO')+'</td></tr>';
   }).join('');
+  const writeChart=learningBars(hLabels.map((lab,i)=>[lab,records.filter(r=>r.answers?.H==='H'+(i+1)).length]),n);
+  const readingChart=learningBars(Object.entries(readValues).map(([key,label])=>
+    [label,records.filter(r=>Array.isArray(r.answers?.L)&&r.answers.L.includes(key)).length]),n);
+  const mathChart=learningMathChart(records,mathLabels);
   const students=records.slice().sort((a,b)=>studentById.get(a.student_id).display_name.localeCompare(studentById.get(b.student_id).display_name,'pt-BR'))
     .map(r=>{
       const student=studentById.get(r.student_id),a=r.answers;
@@ -135,13 +176,16 @@ function officialResultsDashboard(d){
     }).join('');
   body='<div class="twocol"><article class="card"><h2>Hipóteses de escrita</h2>'+
    '<p>Quantidade de estudantes entre as '+n+' avaliações publicadas.</p>'+
-   '<div class="tablewrap"><table><thead><tr><th>Hipótese</th><th>Alunos</th></tr></thead><tbody>'+distribution+'</tbody></table></div></article>'+
+   writeChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Hipótese</th><th>Alunos</th></tr></thead><tbody>'+distribution+'</tbody></table></div></article>'+
    '<article class="card"><h2>Leitura dos resultados</h2>'+
    '<p>Estes dados mostram o que já foi registrado nas fichas da turma. Não substituem a análise das produções e observações da professora.</p>'+
    '<p><strong>'+n+' de '+enrolled+' estudantes</strong> possuem avaliações publicadas ('+percent+'%).</p>'+
    '<p>Para construir um panorama representativo da turma, ainda é necessário registrar os demais estudantes. Os que não possuem avaliação não devem ser classificados como “não alcançou”.</p></article></div>'+
+   '<div class="card"><h2>Habilidades de leitura — gráfico</h2>'+
+   '<p>Quantidade de estudantes que demonstraram cada habilidade nas fichas publicadas. Uma criança pode aparecer em várias habilidades.</p>'+
+   readingChart+'</div>'+
    '<div class="card"><h2>Matemática — indicadores M1 a M7</h2><p>Quantidade de estudantes por situação, considerando somente as '+n+' avaliações publicadas.</p>'+
-   '<div class="tablewrap"><table><thead><tr><th>Indicador</th><th>Alcançou</th><th>Parcialmente</th><th>Não alcançou</th><th>Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
+   mathChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Indicador</th><th>Alcançou</th><th>Parcialmente</th><th>Não alcançou</th><th>Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
    '<div class="card"><h2>Registros individuais da turma</h2><p>Abra um estudante para consultar os conhecimentos e habilidades registrados. Visível somente no acesso autorizado.</p>'+students+'</div>';
  }
  return '<div class="card"><h2>Painel de resultados por turma</h2>'+
@@ -149,7 +193,9 @@ function officialResultsDashboard(d){
   '<label for="resultsClassFilter"><strong>Escolha a turma</strong></label>'+
   '<select id="resultsClassFilter" style="display:block;width:100%;max-width:430px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+options+'</select>'+
   '<p class="intro-note">Turma '+clean(klass.label)+'. Cobertura parcial: '+n+' de '+enrolled+' estudantes avaliados.</p>'+
-  summary+'</div>'+body;
+  summary+'<div class="learning-chart"><p class="chart-subtitle">Cobertura da turma: '+n+' de '+enrolled+' estudantes com avaliação oficial.</p>'+
+  '<div class="chart-track chart-coverage" role="img" aria-label="'+clean(percent+'% da turma avaliada')+'"><span class="chart-fill chart-fill--green" style="width:'+Math.max(0,Math.min(100,(enrolled?100*n/enrolled:0))).toFixed(2)+'%"></span></div>'+
+  '<p class="chart-note">A parte ainda não preenchida corresponde a estudantes sem avaliação publicada, não a dificuldades de aprendizagem.</p></div></div>'+body;
 }
 
 function assessments(d){
