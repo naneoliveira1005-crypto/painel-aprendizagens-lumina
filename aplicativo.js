@@ -322,10 +322,11 @@ function formatImportedRow(row,view){
   const mark=value.startsWith(key+'_')?value.slice(key.length+1):'';
   return line(key+' — '+label,results[mark]);
  }).join('');
+ const published=row.validation_status==='committed';
  const ready=row.validation_status==='ready_for_commit';
  const button=!ready&&row.validation_status==='awaiting_pedagogical_review'?
   '<button type="button" class="smallbtn solid" data-review-ready="'+clean(row.id)+'">Concluir conferência desta ficha (não publica)</button>':'';
- const status=ready?'Conferência concluída · ainda não publicada':'Aguardando conferência pedagógica';
+ const status=published?'Publicado oficialmente':ready?'Conferência concluída · ainda não publicada':'Aguardando conferência pedagógica';
  return '<details style="border:1px solid #dce6de;border-radius:10px;padding:13px;margin:12px 0;background:white">'+
   '<summary style="cursor:pointer"><strong>'+clean(student.display_name)+'</strong> · '+clean(klass?.label||'Turma')+' · '+clean(status)+'</summary>'+
   '<p class="intro-note" style="margin-top:12px"><strong>Código da ficha:</strong> '+clean(row.qr_code)+
@@ -334,21 +335,28 @@ function formatImportedRow(row,view){
   '<div class="tablewrap"><table><tbody>'+language+'</tbody></table></div>'+
   '<h3 style="font-size:14px;margin-top:18px">Matemática</h3>'+
   '<div class="tablewrap"><table><tbody>'+mathematics+'</tbody></table></div>'+
-  (ready?'<p class="intro-note"><strong>Conferência registrada.</strong> A publicação oficial continua desabilitada.</p>':
+  (published?'<p class="intro-note"><strong>Publicado oficialmente.</strong> O registro integra os resultados da turma.</p>':
+   ready?'<p class="intro-note"><strong>Conferência registrada.</strong> A publicação oficial só ocorre por autorização da coordenação.</p>':
   '<p class="intro-note">Só conclua a conferência se nome, turma, QR e todas as marcações corresponderem à ficha original.</p>')+
   '<div class="buttonrow">'+button+'</div></details>';
 }
 function importedReviewPanel(view){
  if(mode!=='live'||role!=='pedagogical_admin')return '';
- const items=view.importRows.filter(r=>r.validation_status==='awaiting_pedagogical_review'||r.validation_status==='ready_for_commit');
+ const items=view.importRows.filter(r=>['awaiting_pedagogical_review','ready_for_commit','committed'].includes(r.validation_status));
  const linked=items.filter(r=>view.students.some(s=>s.id===r.student_id&&s.active&&s.local_reference===r.qr_code));
  const missing=view.importRows.filter(r=>!r.student_id).length;
  const grouped=view.batches.map(b=>{
   const rows=linked.filter(r=>r.batch_id===b.id);
   if(!rows.length)return '';
   const klass=view.classrooms.find(c=>c.id===b.classroom_id);
+  const complete=b.status==='review'&&rows.length===Number(b.expected_rows)&&rows.length>0&&
+    rows.every(r=>r.validation_status==='ready_for_commit');
+  const publication=complete?
+    '<div class="notice info"><strong>Todas as '+rows.length+' fichas estão conferidas.</strong> A publicação oficial é opcional e exige autorização da coordenação. Após publicar, os resultados entram nos indicadores oficiais.</div>'+
+    '<div class="buttonrow"><button type="button" class="smallbtn solid" data-publish-reviewed-batch="'+clean(b.id)+'">Publicar oficialmente '+rows.length+' ficha(s) de '+clean(klass?.label||'turma')+'</button></div>':
+    b.status==='completed'?'<p class="intro-note"><strong>Lote publicado oficialmente.</strong> As avaliações estão no painel de resultados.</p>':'';
   return '<h3 style="margin-top:20px">'+clean(klass?.label||'Turma')+' — '+rows.length+' ficha(s)</h3>'+
-   rows.map(r=>formatImportedRow(r,view)).join('');
+   rows.map(r=>formatImportedRow(r,view)).join('')+publication;
  }).join('');
  return '<div class="card"><h2>Conferência pedagógica — fichas armazenadas</h2>'+
   '<p>Acesse cada estudante, confira o que o leitor registrou e, somente depois de comparar com a ficha original, conclua a conferência. <strong>Nada será publicado automaticamente.</strong></p>'+
@@ -356,6 +364,42 @@ function importedReviewPanel(view){
   (grouped||'<p class="intro-note">Nenhuma ficha com matrícula vinculada aguardando revisão.</p>')+
   (missing?notice('<strong>'+missing+' ficha(s) de lote anterior</strong> ainda sem vínculo de matrícula. Não podem ser validadas nesta etapa.','info'):'')+
   '</div>';
+}
+
+async function publishReviewedBatch(id,button){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const batch=loaded.batches.find(b=>b.id===id&&b.status==='review');
+ const entries=loaded.importRows.filter(r=>r.batch_id===id);
+ if(!batch||!entries.length||entries.length!==Number(batch.expected_rows)||
+    entries.some(r=>r.validation_status!=='ready_for_commit'))return;
+ const klass=loaded.classrooms.find(c=>c.id===batch.classroom_id);
+ const message='PUBLICAÇÃO OFICIAL: você revisou as '+entries.length+' fichas da turma '+
+  (klass?.label||'selecionada')+' e autoriza que seus resultados passem a integrar os indicadores da escola? '+
+  'Esta ação não altera as marcações pedagógicas e não deve ser feita com dados de teste.';
+ if(!window.confirm(message))return;
+ const owner=profile.user_id;
+ button.disabled=true;button.textContent='Publicando com segurança...';
+ try{
+  const {data:auth,error:authError}=await api.auth.getUser();
+  if(authError||auth?.user?.id!==owner)throw new Error('A sessão institucional precisa ser renovada.');
+  const {data,error}=await api.rpc('lumina_publish_reviewed_batch',{p_batch_id:id});
+  if(error)throw new Error(error.message||'O banco recusou a publicação.');
+  if(!data||data.status!=='completed'||Number(data.published)!==entries.length)
+   throw new Error('O banco não confirmou a publicação integral. Atualize e confira antes de repetir.');
+  if(mode!=='live'||profile?.user_id!==owner)return;
+  pedagogicalReviewMessage='Publicação confirmada: '+data.published+' ficha(s) de '+(klass?.label||'turma')+
+   ' incluídas nos resultados oficiais.';
+  await refreshLive();
+ }catch(err){
+  if(mode==='live'&&profile?.user_id===owner){
+   pedagogicalReviewMessage='Não foi possível publicar o lote: '+(err?.message||'erro não identificado')+
+     '. Confira o estado do lote antes de tentar novamente.';
+   button.disabled=false;button.textContent='Tentar publicação oficial';
+   const panel=$('pedagogicalReviewFeedback');
+   if(panel)panel.textContent=pedagogicalReviewMessage;
+   else window.alert(pedagogicalReviewMessage);
+  }
+ }
 }
 async function confirmImportedReview(id,button){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
@@ -392,7 +436,7 @@ function batches(d){
  const admin=role==='pedagogical_admin';
  const savedPilot=pilotStageMessage?notice(clean(pilotStageMessage),'info'):'';
  const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
- return `${savedPilot}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A importação oficial continua bloqueada até concluir os testes de reconhecimento, vinculação e permissões.','info')}
+ return `${savedPilot}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A publicação oficial só é autorizada pela coordenação após confirmar todas as fichas do lote. Dados de teste não devem ser publicados.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261109-digitalizacao-drive-v13" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
  ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Linhas provisórias acessíveis neste perfil: ${d.importRows.length}. Não representam avaliações publicadas.</p>`:''}</div>`:''}
  ${admin?importedReviewPanel(d):''}
@@ -750,7 +794,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261109-digitalizacao-drive-v13';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261109-digitalizacao-drive-v13';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
