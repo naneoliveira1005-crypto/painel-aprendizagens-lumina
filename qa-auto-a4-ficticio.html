@@ -37,17 +37,20 @@ async function makePhoto(){
  try{
   const img=new Image();
   await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=u;});
-  const canvas=$('photo'),ctx=canvas.getContext('2d',{willReadFrequently:true});
-  ctx.fillStyle='#fafafa';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const canvas=$('photo');const realLike=new URLSearchParams(location.search).has('foto-sem-aluno');
+  if(realLike){canvas.width=899;canvas.height=1599;}
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle=realLike?'#504e45':'#fafafa';ctx.fillRect(0,0,canvas.width,canvas.height);
   for(let y=0;y<990;y+=17){
    ctx.fillStyle=y%34?'rgba(30,45,30,.025)':'rgba(245,240,215,.035)';
    ctx.fillRect(0,y,760,8);
   }
   ctx.save();
-  ctx.setTransform(525/1191,15/1191,-30/1684,830/1684,100,70);
+  if(realLike)ctx.setTransform(861/1191,4/1191,-10/1684,1246/1684,10,208);
+  else ctx.setTransform(525/1191,15/1191,-30/1684,830/1684,100,70);
   ctx.drawImage(img,0,0,1191,1684);
   ctx.restore();
-  return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('Falha no PNG simulado')),'image/png'));
+  return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('Falha na foto simulada')),realLike?'image/jpeg':'image/png',realLike?.77:undefined));
  }finally{URL.revokeObjectURL(u);}
 }
 $('run').onclick=async()=>{
@@ -63,7 +66,8 @@ $('run').onclick=async()=>{
   const detectedCorners=frame.LuminaAutoA4.detect($('photo'));
   const detectionResult=detectedCorners?'Bordas automáticas: '+detectedCorners.corners.map(c=>'('+Math.round(c.x)+','+Math.round(c.y)+')').join(' ')+'; confiança '+Math.round(detectedCorners.confidence*100)+'%':'Bordas automáticas: NÃO DETECTADAS';
   $('status').textContent='QA2 — '+detectionResult+'\n'+pixelsNote+'\nPreparando leitor...';
-  const file=new File([photo],'foto-ficticia-inclinada.png',{type:'image/png'});
+  const realLike=new URLSearchParams(location.search).has('foto-sem-aluno');
+  const file=new File([photo],realLike?'simulacao-semelhante-foto-real-sem-aluno.jpeg':'foto-ficticia-inclinada.png',{type:realLike?'image/jpeg':'image/png'});
   const dt=new DataTransfer();dt.items.add(file);
   doc.querySelector('#files').files=dt.files;
   doc.querySelector('#files').dispatchEvent(new Event('change',{bubbles:true}));
