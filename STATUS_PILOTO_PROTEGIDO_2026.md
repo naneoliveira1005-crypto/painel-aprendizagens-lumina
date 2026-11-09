@@ -40,3 +40,13 @@
 
 ## Próximo trabalho prioritário
 Testar a integração autenticada com Priscila, confirmar atomicidade/erros, depois implementar armazenamento seguro dos originais em bucket privado, consulta por turma e liberação controlada para professoras. Simplificar ao máximo: fotografia + conferência das exceções, sem exportação manual de CSV no fluxo definitivo.
+
+## Incidente de leitura real e correção (09/11/2026)
+- Uma foto de ficha REAL do 3º ano foi reconhecida com 1 pendência, apesar de cinco campos sinalizados como não identificados terem X visível: T1, T2, M3, M4, M6. **Não publicar foto, nome ou QR** da criança em repositório público.
+- A coordenação clicou inadvertidamente em “Salvar revisão”. Na aplicação atual, esse botão alterava apenas estado da aba do leitor V5, não a base de dados. Confirmação no Supabase: 0 resultados oficiais, 0 novos registros em `awaiting_pedagogical_review`; as 7 linhas provisórias anteriores e 1 lote anterior continuam intactos.
+- Diagnóstico com a imagem real em ambiente local: em Matemática, 27 dos 28 contornos de caixas foram detectados de modo confiável; a marca do 28º quadradinho era visível. O algoritmo anterior exigia quantidade exata e recorria à leitura por coordenadas aproximadas, com falsos “sem marca única”.
+- Correção em `leitor-v5.html`: leitura alternativa `getAnswersFromMathAnchors`, que estima a grade com 4 colunas e 7 linhas a partir de pelo menos 24 quadradinhos, recalibra outras seções, permite até dois contornos incompletos, usa contraste por alternativas e mantém dúvidas em **Revisar** em vez de inventar marcações.
+- Validação: análise geométrica do arquivo real em Python recuperou todas as 46 posições e X observados. A versão JS do algoritmo passou em teste sintético com um contorno ausente. Teste público de ficha fictícia no navegador: 1 pronta, 0 pendências, todos os X esperados identificados. **Ainda falta teste da foto real pelo navegador da coordenação na versão nova.**
+- Botão adicional: `Desfazer revisão e reler automaticamente` para uma ficha individual; campo de revisão manual renomeado para `Aplicar revisão nesta aba (não publica)`, com diálogo de confirmação.
+- Publicação: `index.html` versão `20261109-releitura-grade-v10`; acesso pelo `leitor-v5.html?v=20261109-releitura-grade-v10`.
+- Não liberar as 449 fichas para aplicação em massa antes de comprovar o resultado da foto REAL na versão nova e piloto de gravação protegida/autorizada.
