@@ -155,6 +155,50 @@ function detectOtsuSheet(canvas){
  if(!bounds||ratio<.27||ratio>.94||bounds.xhi-bounds.xlo<W*.38||
      bounds.yhi-bounds.ylo<H*.47||
      (bounds.ylo<=H*.015&&bounds.yhi>=H*.985))return null;
+
+ // Contorno real da folha. A segmentação por componentes encontra o papel
+ // mesmo quando o cabeçalho escuro atravessa grande parte da página. O topo
+ // é medido pela borda física, não inferido pela altura da fotografia.
+ const pick={
+  tl:{value:Infinity},tr:{value:-Infinity},
+  br:{value:-Infinity},bl:{value:-Infinity}
+ };
+ for(let y=bounds.ylo;y<=bounds.yhi;y++){
+  for(let x=bounds.xlo;x<=bounds.xhi;x++){
+   if(labels[y*W+x]!==bestTag)continue;
+   const sum=x+y,diff=x-y,reverse=y-x;
+   if(sum<pick.tl.value)pick.tl={x,y,value:sum};
+   if(diff>pick.tr.value)pick.tr={x,y,value:diff};
+   if(sum>pick.br.value)pick.br={x,y,value:sum};
+   if(reverse>pick.bl.value)pick.bl={x,y,value:reverse};
+  }
+ }
+ const extremes=[pick.tl,pick.tr,pick.br,pick.bl];
+ const lineLength=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+ const topWidth=lineLength(extremes[0],extremes[1]);
+ const bottomWidth=lineLength(extremes[3],extremes[2]);
+ const leftHeight=lineLength(extremes[0],extremes[3]);
+ const rightHeight=lineLength(extremes[1],extremes[2]);
+ const pageAspect=(topWidth+bottomWidth)/(leftHeight+rightHeight);
+ const quadArea=Math.abs(extremes.reduce((a,v,i)=>{
+  const next=extremes[(i+1)%4];return a+v.x*next.y-next.x*v.y;
+ },0)/2);
+ const shapeFits=
+   pageAspect>.53&&pageAspect<.88&&
+   topWidth>W*.43&&bottomWidth>W*.43&&
+   leftHeight>H*.53&&rightHeight>H*.53&&
+   Math.min(topWidth,bottomWidth)/Math.max(topWidth,bottomWidth)>.65&&
+   Math.min(leftHeight,rightHeight)/Math.max(leftHeight,rightHeight)>.75&&
+   quadArea>W*H*.27&&quadArea<W*H*.96&&
+   extremes[0].y<H*.45&&extremes[1].y<H*.45&&
+   extremes[2].y>H*.62&&extremes[3].y>H*.62;
+ if(shapeFits){
+  return {corners:extremes.map(v=>({x:v.x*canvas.width/W,y:v.y*canvas.height/H})),
+   method:'digitalização automática da folha por quatro bordas',
+   confidence:.96,
+   metrics:{paperRatio:ratio,quadAspect:pageAspect,contrastThreshold:bestT}};
+ }
+
  const xs=[],top=[],bottom=[];
  const step=Math.max(3,Math.round((bounds.xhi-bounds.xlo)/90));
  for(let x=bounds.xlo+Math.round((bounds.xhi-bounds.xlo)*.08);
@@ -327,5 +371,5 @@ function documentCorners(canvas){
  return {corners:points.map(p=>({x:p.x*canvas.width/W,y:p.y*canvas.height/H})),
    confidence,estimatedTop,method:"bordas A4",metrics:{area:normalizedArea,ratio,marginContrast:paper-bg}};
 }
-window.LuminaAutoA4={detect:documentCorners,detectOtsuSheet,version:"2026-photo-A4-v4"};
+window.LuminaAutoA4={detect:documentCorners,detectOtsuSheet,version:"2026-scan-A4-v5"};
 })();
