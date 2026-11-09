@@ -371,7 +371,7 @@ function getAnswersFromMathAnchors(all){
    if(!total)return null;
    sampled[key]=ink/total;
   }
-  details[group]={dx,dy};
+  details[group]={dx,dy,matchKeys:[...matches.keys()],missing:keys.filter(k=>!matches.has(k)),locations:Object.fromEntries(keys.map(k=>[k,{target:predicted[k],found:matches.get(k)?{x:matches.get(k).x,y:matches.get(k).y}:null}]))};
  }
  if(unmatched.length>2||unmatched.some(k=>!k.startsWith('M')))return null; // A falta de qualquer caixa de leitura/hipótese/texto não pode virar leitura correta.
  const answers={},thresholds={};
@@ -389,7 +389,7 @@ function getAnswersFromMathAnchors(all){
  const unresolved=GROUPS.some(([,key,opts])=>!opts.includes(answers[key]));
  return {answers,scores:sampled,thresholds,align:aligned,aligned:true,
   candidates:boxes.length,method:'grade matemática recalibrada',
-  confidence:unresolved?'review':'high',unmatched};
+  confidence:unresolved?'review':'high',unmatched,details};
 }
 
 function getAnswers(canvas){
@@ -570,6 +570,7 @@ async function analyzeOne(entry){
  }
  entry.correctedCanvas=winner.canvas===original?null:winner.canvas;
  entry.autoCropStatus=winner.method?winner.method+';':'';
+ entry.scanDiagnostics=winner.reading.details||null;entry.unmatchedBoxes=winner.reading.unmatched||[];
  entry.answers=winner.reading.answers;entry.scores=winner.reading.scores;
  entry.thresholds=winner.reading.thresholds;entry.align=winner.reading.align;
  entry.alignmentWarning=!winner.reading.aligned;
