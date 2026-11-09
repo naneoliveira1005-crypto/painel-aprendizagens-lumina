@@ -18,7 +18,7 @@
 <section class="panel"><h2>2. Resultado do lote</h2><p class="help">As fichas com QR ausente, marcação dupla, marcação obrigatória vazia ou identificação repetida são separadas automaticamente.</p><div class="buttons"><button id="consolidate" disabled>✓ Consolidar fichas válidas</button><button id="csv" class="alt" disabled>⬇ Exportar CSV validado</button><button id="handoff" class="alt" disabled>Enviar lote para o Painel da Lumina</button></div><p class="message" id="exportInfo">Nenhum resultado consolidado nesta sessão.</p><p class="help">Consolidar, nesta versão, significa preparar o arquivo de teste para conferência. Não grava no banco.</p></section>
 </div>
 <div class="metrics"><div class="metric"><b id="countTotal">0</b><span>Fichas carregadas</span></div><div class="metric"><b id="countDone">0</b><span>Analisadas</span></div><div class="metric"><b id="countReady">0</b><span>Prontas para validar</span></div><div class="metric"><b id="countReview">0</b><span>Precisam de revisão</span></div></div>
-<section class="panel"><h2>3. Conferência de exceções</h2><p class="help">Se aparecer <b>“1 com pendência”</b>, <strong>clique na linha da ficha</strong> para descobrir o motivo exato. Confira o quadro <b>Observação</b> e o painel <b>Revisar ficha selecionada</b>. Não consolide uma ficha enquanto houver pendências de leitura.</p><p class="help">As causas podem ser QR não identificado, foto fora da proporção A4, quadradinhos desalinhados ou marcações não reconhecidas. A correção depende do motivo exibido.</p><div class="toolbar"><label for="filter">Mostrar</label><select id="filter"><option value="all">Todas</option><option value="review">Somente revisar</option><option value="ready">Somente prontas</option><option value="consolidated">Consolidadas</option></select></div><div class="scroll"><table><thead><tr><th>#</th><th>Arquivo / página</th><th>Identificação QR</th><th>Situação</th><th>Observação</th></tr></thead><tbody id="rows"><tr><td colspan="5" style="color:#6a8074">Nenhuma ficha carregada.</td></tr></tbody></table></div></section>
+<section class="panel"><h2>3. Conferência de exceções</h2><p class="help">Se aparecer <b>“1 com pendência”</b>, <strong>clique na linha da ficha</strong> para ver a foto e os campos sinalizados. <strong>Um campo sem X confirmado pode significar folha não marcada, duas marcas ou erro óptico.</strong> Confira visualmente. Não marque uma resposta apenas para eliminar a pendência e não consolide resultados duvidosos.</p><p class="help">Se a folha física tiver X nos campos sinalizados, a fotografia precisa de diagnóstico técnico, não de preenchimento pela professora. Se o campo não foi observado, a professora deve marcar a opção prevista na ficha, como “Não observado” (NO) em Matemática ou “Não lê” nos textos, somente quando isso corresponder ao que realmente observou.</p><div class="toolbar"><label for="filter">Mostrar</label><select id="filter"><option value="all">Todas</option><option value="review">Somente revisar</option><option value="ready">Somente prontas</option><option value="consolidated">Consolidadas</option></select></div><div class="scroll"><table><thead><tr><th>#</th><th>Arquivo / página</th><th>Identificação QR</th><th>Situação</th><th>Observação</th></tr></thead><tbody id="rows"><tr><td colspan="5" style="color:#6a8074">Nenhuma ficha carregada.</td></tr></tbody></table></div></section>
 <section class="panel hide" id="editPanel" style="margin-top:18px"><h2>4. Revisar ficha selecionada</h2><div class="review"><div><canvas id="preview" class="preview" width="595" height="842" aria-label="Fotografia da ficha e indicação dos quatro cantos da folha"></canvas>
 <div class="crop-actions">
 <button id="startCrop" type="button" class="alt">Ajuste excepcional de foto (coordenação)</button>
@@ -50,10 +50,25 @@ function setCounts(){
  $('handoff').disabled=!consolidated.size;
 }
 function statusLabel(s){return {pending:'Aguardando',ready:'Pronta',review:'Revisar',consolidated:'Consolidada',failed:'Erro'}[s]||s;}
+function readableIssue(key){
+ const found={
+  T1:'T1 — leitura de texto de memória',
+  T2:'T2 — leitura de texto narrativo',
+  M1:'M1 — contagem e quantificação',
+  M2:'M2 — leitura e escrita de números',
+  M3:'M3 — sistema decimal',
+  M4:'M4 — adição e subtração',
+  M5:'M5 — grupos iguais e repartição',
+  M6:'M6 — sequências e regularidades',
+  M7:'M7 — leitura de dados',
+  H:'Hipótese de escrita'
+ };
+ return found[key]||key;
+}
 function collectErrors(entry){
  const errors=[];
  if(!localSafeCode(entry.code||''))errors.push('QR não identificado');
- for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(key+' sem marca única');}
+ for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': não foi possível confirmar um único X');}
  if(entry.shapeWarning)errors.push('Imagem fora da proporção A4');
  if(entry.alignmentWarning)errors.push('Alinhamento dos quadrinhos precisa de revisão');
  if(entry.code){const duplicate=queue.some(o=>o!==entry&&o.code===entry.code&&o.state!=='pending');if(duplicate)errors.push('Código repetido');}
