@@ -46,10 +46,12 @@ function render(){
  $('content').innerHTML=({visao:()=>home(d),turmas:()=>classes(d),avaliacoes:()=>assessments(d),lotes:()=>batches(d),equipe:()=>team(d)})[currentPage]();
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
  const classroomPicker=$('studentClassFilter'); if(classroomPicker)classroomPicker.addEventListener('change',e=>{selectedRosterClass=e.target.value;render()});
+ const resultPicker=$('resultsClassFilter');if(resultPicker)resultPicker.addEventListener('change',e=>{selectedResultsClass=e.target.value;render()});
 }
 function home(d){
  let cycleCount=d.cycles.length, classCount=d.classrooms.length, studentCount=d.students.length, resultCount=d.results.length;
- const realWarning=mode==='live'?notice('As matrículas foram conferidas pela coordenação. Os <strong>'+d.importRows.length+' registros provisórios</strong> continuam separados e ainda não são resultados oficiais. A leitura de QR + X precisa da conferência de vínculo e da validação pedagógica antes de qualquer publicação.','info'):notice('As informações abaixo são fictícias ou estruturais para prévia de navegação. Nenhuma criança real é identificada.','info');
+ const pendingValidation=d.importRows.filter(r=>r.validation_status!=='committed').length;
+ const realWarning=mode==='live'?notice('Existem <strong>'+pendingValidation+' ficha(s) aguardando conferência</strong> e <strong>'+d.results.length+' avaliação(ões) oficiais</strong> disponíveis neste perfil. A publicação exige conferência pedagógica e autorização da coordenação.','info'):notice('As informações abaixo são fictícias ou estruturais para prévia de navegação. Nenhuma criança real é identificada.','info');
  const classLines=d.classrooms.slice(0,5).map(c=>`<li><span><b>${clean(c.label)}</b><br><small>${clean(shiftLabel[c.shift]||c.shift)}</small></span><span class="chip grey">${mode==='demo'?'Exemplo':'Cadastrada'}</span></li>`).join('');
  let graph='';
  if(mode==='demo'){
@@ -59,15 +61,97 @@ function home(d){
   const v=[1,2,3,4,5].map(x=>d.results.filter(r=>r.answers?.H==='H'+x).length);
   graph=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'].map((lab,i)=>`<div class="barrow"><span>${clean(lab)}</span><div class="bartrack"><span style="width:${Math.round((v[i]/Math.max(1,...v))*100)}%"></span></div><strong>${v[i]}</strong></div>`).join('');
  }else graph='<div class="empty">Ainda não existem resultados oficiais disponíveis para este perfil. Os registros provisórios estão em validação separada.</div>';
- const counts = mode==='demo'?['16','—','—','0']: [classCount,d.students.filter(s=>s.active).length,resultCount,d.importRows.length];
+ const counts = mode==='demo'?['16','—','—','0']: [classCount,d.students.filter(s=>s.active).length,resultCount,pendingValidation];
  return `${realWarning}<div class="kpi-grid">${cardKpi(counts[0],'Turmas visíveis','Conforme a permissão')}${cardKpi(counts[1],mode==='live'?'Matrículas confirmadas':'Estudantes fictícios',mode==='live'?'QR individual vinculado ao cadastro':'Dados de demonstração')}${cardKpi(counts[2],'Avaliações oficiais','Resultados já validados')}${cardKpi(counts[3],'Fichas em validação','Somente coordenação pode consultar')}</div>
- <div class="twocol"><article class="card"><h2>Panorama da escrita</h2><p>${mode==='demo'?'Exemplo fictício de visualização':'Somente resultados oficiais autorizados'}</p>${graph}</article><article class="card"><h2>Turmas acompanhadas</h2><p>Organização das turmas e respectivos turnos.</p><ul class="eyelist">${classLines||'<li>Nenhuma turma liberada para este perfil.</li>'}</ul><button class="smallbtn" data-jump="turmas">Ver todas as turmas →</button></article></div>
+ <div class="twocol"><article class="card"><h2>Panorama da escrita</h2><p>${mode==='demo'?'Exemplo fictício de visualização':'Distribuição parcial entre as avaliações oficiais registradas. Não representa necessariamente toda a escola.'}</p>${graph}</article><article class="card"><h2>Turmas acompanhadas</h2><p>Organização das turmas e respectivos turnos.</p><ul class="eyelist">${classLines||'<li>Nenhuma turma liberada para este perfil.</li>'}</ul><button class="smallbtn" data-jump="turmas">Ver todas as turmas →</button></article></div>
  <div class="card"><h2>Próximas etapas do projeto</h2><p>Ativação responsável, sem misturar testes com os resultados oficiais.</p><ul class="eyelist"><li><span>Conferir nomes, e-mails e permissões restantes das professoras</span>${chip('pending')}</li><li><span>Testar com uma ficha impressa e fotografada</span>${chip('pending')}</li><li><span>Conferir QR e resultados do CSV com a matrícula autorizada</span>${chip('pending')}</li><li><span>Habilitar lançamento protegido após testes de segurança e validação pedagógica</span>${chip('pending')}</li></ul></div>`;
 }
 function classes(d){
  const rows=d.classrooms.map(c=>`<tr><td><strong>${clean(c.label)}</strong></td><td>${clean(shiftLabel[c.shift]||c.shift)}</td><td>${mode==='demo'?'—':d.students.filter(s=>s.classroom_id===c.id).length}</td><td>${chip(mode==='demo'?'exemplo':d.students.filter(s=>s.classroom_id===c.id).every(s=>s.active)?'active':'pending')}</td></tr>`).join('');
  return `${notice(mode==='demo'?'Simulação da lista de turmas.':'A lista respeita seu vínculo pedagógico e as regras de acesso do banco de dados.','info')}<div class="card"><h2>Turmas autorizadas</h2><p>${clean(d.classrooms.length)} turma(s) disponíveis neste perfil.</p><div class="tablewrap"><table><thead><tr><th>Turma</th><th>Turno</th><th>Estudantes no banco</th><th>Situação</th></tr></thead><tbody>${rows||'<tr><td colspan="4">Nenhuma turma disponível.</td></tr>'}</tbody></table></div></div>`;
 }
+
+let selectedResultsClass='';
+function officialResultsDashboard(d){
+ if(mode==='demo')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>Disponível apenas para usuários autorizados, a partir de resultados oficiais.</p></div>';
+ if(role==='director')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>O acesso da direção não exibe dados individuais nesta etapa. Indicadores agregados poderão ser disponibilizados após a configuração específica desse perfil.</p></div>';
+ const authorized=d.students.filter(s=>s.active&&d.classrooms.some(c=>c.id===s.classroom_id));
+ const studentById=new Map(authorized.map(s=>[s.id,s]));
+ const results=d.results.filter(r=>studentById.has(r.student_id)&&r.answers&&typeof r.answers==='object');
+ const byClass=klass=>results.filter(r=>studentById.get(r.student_id).classroom_id===klass);
+ const available=d.classrooms.filter(c=>authorized.some(s=>s.classroom_id===c.id))
+   .slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+ if(!available.length)return '<div class="card"><h2>Panorama das aprendizagens</h2><p>Ainda não há turmas vinculadas a este acesso.</p></div>';
+ const chosen=available.some(c=>c.id===selectedResultsClass)?selectedResultsClass:
+   (available.find(c=>byClass(c.id).length>0)||available[0]).id;
+ selectedResultsClass=chosen;
+ const klass=available.find(c=>c.id===chosen);
+ const enrolled=authorized.filter(s=>s.classroom_id===chosen).length;
+ const records=byClass(chosen);
+ const n=records.length;
+ const percent=enrolled?Math.round(n*100/enrolled):0;
+ const hLabels=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'];
+ const mathLabels=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Tabelas e gráficos'];
+ const mathValues={A:'Alcançou',P:'Parcialmente',N:'Não alcançou',NO:'Não observado'};
+ const memories={T10:'Lê',T11:'Recita',T12:'Não lê'};
+ const narratives={T20:'Lê com fluência',T21:'Lê sem fluência',T22:'Não lê'};
+ const readValues={L1:'Reconhece letras',L2:'Lê letras isoladas',L3:'Lê sílabas simples',L4:'Lê sílabas complexas',L5:'Lê palavras',L6:'Lê frases simples',L7:'Lê frases complexas'};
+ const options=available.map(c=>'<option value="'+clean(c.id)+'"'+(c.id===chosen?' selected':'')+'>'+clean(c.label)+' — '+byClass(c.id).length+' avaliação(ões)</option>').join('');
+ const summary='<div class="kpi-grid">'+
+   cardKpi(n,'Avaliações oficiais','Com conferência concluída')+
+   cardKpi(enrolled,'Estudantes da turma','Matrículas ativas')+
+   cardKpi(Math.max(0,enrolled-n),'Ainda sem avaliação oficial','Não significa ausência de aprendizagem')+
+   cardKpi(percent+'%','Cobertura da avaliação','Amostra parcial até completar a turma')+'</div>';
+ let body='<div class="notice info">Ainda não há resultados oficiais nesta turma. Selecione outra turma ou continue a leitura das fichas.</div>';
+ if(n){
+  const distribution=hLabels.map((label,i)=>{
+    const count=records.filter(r=>r.answers.H==='H'+(i+1)).length;
+    return '<tr><td>'+clean(label)+'</td><td>'+count+'</td></tr>';
+  }).join('');
+  const math=mathLabels.map((label,i)=>{
+   const key='M'+(i+1);
+   const count=mark=>records.filter(r=>r.answers[key]===key+'_'+mark).length;
+   return '<tr><td><strong>'+clean(key)+'</strong> — '+clean(label)+'</td>'+
+    '<td>'+count('A')+'</td><td>'+count('P')+'</td><td>'+count('N')+'</td><td>'+count('NO')+'</td></tr>';
+  }).join('');
+  const students=records.slice().sort((a,b)=>studentById.get(a.student_id).display_name.localeCompare(studentById.get(b.student_id).display_name,'pt-BR'))
+    .map(r=>{
+      const student=studentById.get(r.student_id),a=r.answers;
+      const h=hLabels[Number(String(a.H||'').replace('H',''))-1]||'A conferir';
+      const reading=Array.isArray(a.L)?a.L.map(x=>readValues[x]).filter(Boolean).join('; '):'';
+      const indicator=mathLabels.map((lab,i)=>{
+       const k='M'+(i+1),mark=String(a[k]||'').slice(k.length+1);
+       return '<tr><td>'+clean(k+' — '+lab)+'</td><td>'+clean(mathValues[mark]||'Não informado')+'</td></tr>';
+      }).join('');
+      return '<details style="border:1px solid #dce6de;border-radius:10px;padding:13px;margin:10px 0;background:#fff">'+
+       '<summary style="cursor:pointer"><strong>'+clean(student.display_name)+'</strong> · '+clean(h)+'</summary>'+
+       '<p class="intro-note" style="margin-top:10px">Registro oficial do ciclo de 2026, conforme a ficha conferida.</p>'+
+       '<div class="tablewrap"><table><tbody>'+
+       '<tr><th style="width:43%">Hipótese de escrita</th><td>'+clean(h)+'</td></tr>'+
+       '<tr><th>Habilidades de leitura</th><td>'+clean(reading||'Nenhuma habilidade marcada')+'</td></tr>'+
+       '<tr><th>Leitura de texto de memória</th><td>'+clean(memories[a.T1]||'A conferir')+'</td></tr>'+
+       '<tr><th>Leitura de texto narrativo</th><td>'+clean(narratives[a.T2]||'A conferir')+'</td></tr>'+
+       indicator+'</tbody></table></div></details>';
+    }).join('');
+  body='<div class="twocol"><article class="card"><h2>Hipóteses de escrita</h2>'+
+   '<p>Quantidade de estudantes entre as '+n+' avaliações publicadas.</p>'+
+   '<div class="tablewrap"><table><thead><tr><th>Hipótese</th><th>Alunos</th></tr></thead><tbody>'+distribution+'</tbody></table></div></article>'+
+   '<article class="card"><h2>Leitura dos resultados</h2>'+
+   '<p>Estes dados mostram o que já foi registrado nas fichas da turma. Não substituem a análise das produções e observações da professora.</p>'+
+   '<p><strong>'+n+' de '+enrolled+' estudantes</strong> possuem avaliações publicadas ('+percent+'%).</p>'+
+   '<p>Para construir um panorama representativo da turma, ainda é necessário registrar os demais estudantes. Os que não possuem avaliação não devem ser classificados como “não alcançou”.</p></article></div>'+
+   '<div class="card"><h2>Matemática — indicadores M1 a M7</h2><p>Quantidade de estudantes por situação, considerando somente as '+n+' avaliações publicadas.</p>'+
+   '<div class="tablewrap"><table><thead><tr><th>Indicador</th><th>Alcançou</th><th>Parcialmente</th><th>Não alcançou</th><th>Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
+   '<div class="card"><h2>Registros individuais da turma</h2><p>Abra um estudante para consultar os conhecimentos e habilidades registrados. Visível somente no acesso autorizado.</p>'+students+'</div>';
+ }
+ return '<div class="card"><h2>Painel de resultados por turma</h2>'+
+  '<p><strong>Somente avaliações oficialmente publicadas.</strong> Os dados acompanham os lançamentos e são separados por turma.</p>'+
+  '<label for="resultsClassFilter"><strong>Escolha a turma</strong></label>'+
+  '<select id="resultsClassFilter" style="display:block;width:100%;max-width:430px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+options+'</select>'+
+  '<p class="intro-note">Turma '+clean(klass.label)+'. Cobertura parcial: '+n+' de '+enrolled+' estudantes avaliados.</p>'+
+  summary+'</div>'+body;
+}
+
 function assessments(d){
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
 
@@ -109,14 +193,14 @@ function assessments(d){
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
     ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-class="${clean(selectedRosterClass)}">Visualizar e imprimir QR Codes (${printableCodes})</button> <button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Preparar atividades LP + Matemática + ficha X (${printableCodes} estudantes)</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
-    <p class="intro-note">Cada estudante tem 3 páginas: Língua Portuguesa, Matemática e ficha integrada de X. Faça primeiro uma prévia individual, conferindo a impressão A4 e a leitura de X. Apenas a ficha de X deve ser digitalizada no leitor V5. O envio e a publicação de resultados continuam desabilitados.</p></div>`;
+    <p class="intro-note">Cada estudante tem três páginas: Língua Portuguesa, Matemática e ficha integrada de X. Somente a ficha de X deve ser digitalizada. A publicação exige leitura, conferência pedagógica e autorização da coordenação.</p></div>`;
 
  } else {
    const activeStudents=d.students.filter(s=>s.active);
    const rows=activeStudents.map(s=>`<tr><td>${clean(s.display_name)}</td><td>${clean(d.classrooms.find(c=>c.id===s.classroom_id)?.label||'')}</td><td>${d.results.filter(r=>r.student_id===s.id).length}</td></tr>`).join('');
    studentSection=`<div class="card"><h2>Estudantes autorizados</h2>${rows?`<div class="tablewrap"><table><thead><tr><th>Estudante</th><th>Turma</th><th>Avaliações oficiais</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty">Ainda não há estudantes validados e autorizados para este perfil.</div>'}</div>`;
  }
- return `<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div>
+ return `${officialResultsDashboard(d)}<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div>
  ${notice('<strong>Organização pedagógica do fechamento de 2026:</strong> os roteiros abaixo são referências de planejamento para Língua Portuguesa e Matemática. Não constituem lançamentos oficiais nem liberam novos formulários ou envios.','info')}
  <div class="twocol">
    <article class="card"><h2>Língua Portuguesa</h2><p>Instrumento de fechamento — 1º ao 5º ano, com complexidade ajustada à turma.</p><ul class="eyelist">
@@ -135,8 +219,8 @@ function assessments(d){
    </ul></article>
  </div>
  <div class="card"><h2>Preparação para os registros</h2>
- <p><strong>Etapa atual:</strong> conferência dos instrumentos e organização das turmas. As listas recebidas estão em pré-cadastro aguardando conferência; os QR Codes e o vínculo das fichas ainda precisam ser preparados antes dos lançamentos reais.</p>
- <p class="intro-note">Fluxo previsto: aplicação e marcação da ficha → envio protegido do arquivo → conferência pedagógica → validação → visualização consolidada. A etapa de envio e publicação ainda não está habilitada nesta versão.</p></div>
+ <p><strong>Etapa atual:</strong> aplicação e digitalização das fichas, conferência pedagógica e publicação controlada. Os resultados oficiais aparecem no painel por turma acima.</p>
+ <p class="intro-note">Fluxo atual: preencher a ficha → leitura local dos X → conferência da matrícula e dos registros → autorização da coordenação → visualização por turma. As fotografias originais não são armazenadas neste piloto.</p></div>
  ${studentSection}`;
 }
 
@@ -438,7 +522,7 @@ function batches(d){
  const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
  return `${savedPilot}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A publicação oficial só é autorizada pela coordenação após confirmar todas as fichas do lote. Dados de teste não devem ser publicados.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261109-digitalizacao-drive-v13" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
- ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Linhas provisórias acessíveis neste perfil: ${d.importRows.length}. Não representam avaliações publicadas.</p>`:''}</div>`:''}
+ ${admin?`<div class="card"><h2>Lotes provisórios da escola</h2><p>Somente a coordenação vê registros de importação em validação.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Histórico de fichas desta escola: ${d.importRows.length}; publicadas: ${d.importRows.filter(r=>r.validation_status==='committed').length}; aguardando conferência: ${d.importRows.filter(r=>r.validation_status!=='committed').length}.</p>`:''}</div>`:''}
  ${admin?importedReviewPanel(d):''}
  <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados. A coordenação poderá registrar um piloto com até dez fichas da mesma turma após a conferência, aguardando validação pedagógica.</p></div>`;
 }
