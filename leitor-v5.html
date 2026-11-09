@@ -25,7 +25,7 @@
 <button id="resetCrop" class="alt hide" type="button">Recomeçar 4 cantos</button>
 <button id="applyCrop" type="button" class="hide">Aplicar enquadramento e reler</button>
 </div>
-<p class="crop-help hide" id="cropHelp" role="status" aria-live="polite">Clique nos quatro cantos da FOLHA de papel na foto, nesta ordem: 1º superior esquerdo; 2º superior direito; 3º inferior direito; 4º inferior esquerdo. Clique na borda do papel, não no quadradinho preto.</p><p class="help">Confira a foto, o QR e as marcações. <strong>O leitor tenta recortar a folha A4 automaticamente durante a análise. Se houver pendência, verifique o motivo e a qualidade da foto antes de qualquer revisão manual.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se não houver QR legível, use apenas códigos fictícios. Em uso real, a vinculação manual deverá ser confirmada no cadastro protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><div class="buttons"><button id="saveReview">Salvar revisão</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
+<p class="crop-help hide" id="cropHelp" role="status" aria-live="polite">Clique nos quatro cantos da FOLHA de papel na foto, nesta ordem: 1º superior esquerdo; 2º superior direito; 3º inferior direito; 4º inferior esquerdo. Clique na borda do papel, não no quadradinho preto.</p><p class="help">Confira a foto, o QR e as marcações. <strong>O leitor tenta recortar a folha A4 automaticamente durante a análise. Se houver pendência, verifique o motivo e a qualidade da foto antes de qualquer revisão manual.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se não houver QR legível, use apenas códigos fictícios. Em uso real, a vinculação manual deverá ser confirmada no cadastro protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><div class="buttons"><button id="saveReview">Salvar revisão</button><button id="undoReview" class="alt">Desfazer revisão e reler automaticamente</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
 <p class="footer">Projeto escolar Lumina • Escola Municipal Sônia Maria Pereira do Nascimento. Protótipo de validação: uso sem identificação de crianças. A leitura QR usa BarcodeDetector ou a biblioteca jsQR local. O contraste do campo de hipótese de escrita foi ajustado com base em variações de resolução das sete páginas do PDF de teste do 2º A e nas três fichas fictícias. A decisão automática deve ser verificada por amostragem antes de qualquer utilização oficial. O PDF é carregado usando biblioteca PDF.js; nenhum resultado é enviado ao Supabase.</p>
 </main>
 <script>
@@ -706,6 +706,26 @@ async function selectItem(i){cropMode=false;cropSource=null;cropPoints=[];$('cro
  const p=$('preview');const ctx=p.getContext('2d');ctx.clearRect(0,0,p.width,p.height);try{const image=await renderEntry(entry);p.width=image.width;p.height=image.height;p.getContext('2d').drawImage(image,0,0);}catch(err){p.width=595;p.height=842;p.getContext('2d').fillText('Não foi possível exibir esta ficha.',20,80)}
  renderList();$('editPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
+$('undoReview').onclick=async()=>{
+ if(selectedIndex<0||processing)return;
+ const id=selectedIndex,entry=queue[id];
+ if(entry.state==='consolidated'){
+  tell('A ficha foi consolidada no lote local. Não é possível editar sem reiniciar esse lote. Nenhum resultado oficial foi enviado.');return;
+ }
+ const button=$('undoReview');button.disabled=true;button.textContent='Desfazendo e relendo...';
+ try{
+  entry.state='pending';entry.code='';entry.answers={};entry.issues=[];
+  entry.correctedCanvas=null;entry.autoCropStatus='';entry.shapeWarning=false;
+  entry.alignmentWarning=false;entry.scores=null;
+  await analyzeOne(entry);
+  recalcDuplicates();await selectItem(id);
+  tell('Revisão local desfeita; foto original relida automaticamente. Resultado: '+
+    statusLabel(entry.state)+'. '+(entry.issues||[]).join('; '));
+ }catch(err){
+  entry.state='failed';entry.issues=['Falha ao refazer leitura: '+(err?.message||'erro de imagem')];
+  renderList();tell(entry.issues[0]);
+ }finally{button.disabled=false;button.textContent='Desfazer revisão e reler automaticamente';}
+};
 $('closeReview').onclick=()=>{$('editPanel').classList.add('hide');selectedIndex=-1;renderList()};
 $('saveReview').onclick=()=>{if(selectedIndex<0)return;const entry=queue[selectedIndex];if(entry.state==='consolidated'){tell('Registros já consolidados não são modificados nesta versão demonstrativa.');return;}
  const code=$('studentCode').value.toUpperCase().trim();entry.code=code;for(const s of document.querySelectorAll('#selections select[data-key]'))entry.answers[s.dataset.key]=s.value;
