@@ -112,6 +112,46 @@ function printSet(rows,klass){
 }
 
 
+
+/* Pacotes entregues impressos pela escola. Um QR já integrado por matrícula.
+ * Os campos X e a posição original do QR continuam exatamente os mesmos do V5.
+ */
+function printSchoolPacket(rows,klass,kind="correction"){
+ if(!window.qrcode)throw new Error("A biblioteca de QR Code não carregou.");
+ if(!["correction","full","activities"].includes(kind))throw new Error("Tipo de impressão não reconhecido.");
+ if(!Array.isArray(rows)||!rows.length||!klass?.id)throw new Error("Selecione uma turma com matrículas confirmadas.");
+ const grade=Number((klass.label.match(/^[1-5]/)||[])[0]);
+ if(!lp[grade]||!mat[grade])throw new Error("Ano escolar não reconhecido.");
+ const ids=new Set(),codes=new Set();
+ for(const s of rows){
+  if(s.classroom_id!==klass.id||s.active!==true||!/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||""))
+    throw new Error("Impressão bloqueada: confira matrícula, turma e QR do estudante.");
+  if(ids.has(s.id)||codes.has(s.local_reference))throw new Error("Há matrícula ou QR Code duplicado nesta turma.");
+  ids.add(s.id);codes.add(s.local_reference);
+ }
+ const sorted=rows.slice().sort((a,b)=>a.display_name.localeCompare(b.display_name,"pt-BR"));
+ const popup=window.open("","_blank");
+ if(!popup)throw new Error("Permita a abertura de novas abas para impressão.");
+ popup.opener=null;
+ try{
+  const pages=sorted.map(s=>{
+   if(kind==="correction")return marking(s,klass);
+   if(kind==="activities")return language(s,klass,grade)+mathematics(s,klass,grade);
+   return language(s,klass,grade)+mathematics(s,klass,grade)+marking(s,klass);
+  }).join("");
+  const pagesPerStudent=kind==="correction"?1:kind==="activities"?2:3;
+  const title=kind==="correction"?"Fichas de correção prontas":kind==="activities"?"Atividades para aplicar":"Avaliação completa";
+  const banner=title+" · "+klass.label+" · "+sorted.length+" estudantes · "+(sorted.length*pagesPerStudent)+" páginas A4"+
+   " · QR impresso diretamente na ficha · Sem etiquetas";
+  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>'+esc(banner)+'</title><style>'+css+'</style></head><body>'+
+   '<div class="toolbar"><button type="button" onclick="window.print()">Imprimir / salvar em PDF</button>'+
+   '<span>'+esc(banner)+'. Impressão centralizada pela escola. A4, tamanho real (100%).</span></div>'+
+   pages+'</body></html>';
+  popup.document.open();popup.document.write(html);popup.document.close();popup.focus();
+  return {students:sorted.length,grade,pages:sorted.length*pagesPerStudent,kind};
+ }catch(error){popup.close();throw error;}
+}
+
 /* Impressão padronizada e QR individual, compatíveis com FICHA-V1. */
 function standardGrade(grade){
  const y=Number(grade);
@@ -232,5 +272,5 @@ function testFixtureMarkup(){
  const student={id:'TESTE-FICTICIO',display_name:'ESTUDANTE FICTÍCIO — NÃO É MATRÍCULA',classroom_id:'TURMA-TESTE',active:true,local_reference:'SON-26-ABCDEF123456'};
  return marking(student,{id:'TURMA-TESTE',label:'1º A (TESTE)'},true);
 }
-window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,printStandardSheet,printQrLabels,version:"2026-fichas-padronizadas-v5",pagesPerStudent:3};
+window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,printStandardSheet,printQrLabels,printSchoolPacket,version:"2026-kit-escolar-pronto-v7",pagesPerStudent:3};
 })();
