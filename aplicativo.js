@@ -502,6 +502,12 @@ function batches(d){
  const readerUrl='leitor-v5.html?v=20261111-omr-alinhamento-real-v18';
  const reader=mode==='live'&&role==='pedagogical_admin'?
   '<div class="card" id="readerTop"><h2>1. Enviar ficha preenchida</h2>'+
+  '<div id="stageSavedBanner" class="notice info" role="status">'+
+    (pilotStageMessage?clean(pilotStageMessage):
+      transferDraft?.ownerId===profile?.user_id?
+       '<strong>Resultado ainda não salvo:</strong> confira a mensagem da área protegida abaixo e tente gravar novamente.':
+       'O leitor começa do zero quando você troca de página. <strong>Os lotes salvos no banco permanecem registrados</strong> e podem ser consultados no histórico.')+
+  '</div>'+
   '<p>Selecione o PDF digitalizado no Drive ou uma fotografia JPG/PNG. O leitor identifica o QR Code e os quadradinhos pintados.</p>'+
   '<iframe id="pilotReaderIframe" title="Envio e leitura de fichas OMR V2" src="'+readerUrl+'" loading="eager" style="width:100%;height:1100px;border:1px solid #d6e5d9;border-radius:10px;background:white" referrerpolicy="same-origin"></iframe>'+
   '<p class="intro-note">Se precisar de mais espaço, <a href="'+readerUrl+'" target="_blank" rel="noopener noreferrer">abra o leitor em uma nova aba</a>. A leitura da ficha não publica dados automaticamente.</p></div>':
@@ -515,7 +521,7 @@ function batches(d){
    clean(b.expected_rows??'—')+'</td><td>'+chip(b.status)+'</td></tr>').join('');
   extras=
    '<div class="card"><h2>2. Conferir vínculo com a matrícula</h2>'+
-   '<p>Depois de analisar a ficha, confira as marcações e clique em <strong>Consolidar fichas válidas</strong> e <strong>Enviar lote para o Painel da Lumina</strong>. A conferência aparecerá abaixo, sem publicar automaticamente.</p>'+
+   '<p>Confira as marcações, clique em <strong>Consolidar fichas válidas</strong> e depois <strong>Enviar e salvar lote para conferência</strong>. Aguarde a mensagem <strong>LOTE SALVO</strong> antes de mudar de página. Nada será publicado oficialmente.</p>'+
    '<input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv" aria-label="Importar CSV de conferência, somente se necessário">'+
    '<div id="csvReport" class="report" role="status">Aguardando leitura e conferência da ficha.</div></div>'+
    importedReviewPanel(d)+
@@ -732,6 +738,8 @@ async function stagePilotCSV(button,area,options={}){
   transferDraft=null;
   notifyPilotTransfer(options.replyTo,{saved:true,count:written});
   pilotStageMessage='Lote piloto SALVO em área protegida: '+written+' ficha(s) em conferência pedagógica. Pode mudar de página; nenhum resultado oficial foi publicado.';
+  const savedBanner=$('stageSavedBanner');
+  if(savedBanner)savedBanner.textContent=pilotStageMessage;
   area.replaceChildren();
   const success=document.createElement('p');
   success.textContent='Lote piloto guardado na área protegida. Fichas recebidas: '+Number(result.data?.rows_staged||0)+'. Situação: EM CONFERÊNCIA PEDAGÓGICA. Nenhum resultado oficial foi publicado.';
@@ -739,7 +747,7 @@ async function stagePilotCSV(button,area,options={}){
   const hint=document.createElement('p');
   hint.textContent='Pode mudar de página: os resultados provisórios ficaram armazenados no banco. As fotografias originais não foram armazenadas. Preserve-as em local institucional protegido.';
   area.appendChild(hint);
-  await refreshLive();
+  await refreshLive({skipRender:true});
  }catch(error){
   if(mode==='live'&&profile?.user_id===candidate.ownerId){
    const warning=document.createElement('p');
@@ -809,7 +817,7 @@ async function enterLive(){
    if(card)card.textContent='Não foi possível carregar os dados agora. Clique em Atualizar. Sua conta permanece protegida.';
  });
 }
-async function refreshLive(){
+async function refreshLive(options={}){
  if(!api||!profile||mode!=='live')return;
  const currentUser=profile.user_id;
  const get=async(tab,fields,filter='school_id')=>{
@@ -840,7 +848,7 @@ async function refreshLive(){
  if(mode!=='live'||profile?.user_id!==currentUser)return;
  const [classrooms,cycles,students,official,staff,staffLinks,batches,importRows]=results;
  loaded={classrooms,cycles,students,results:official,staff,staffLinks,batches,importRows};
- render();
+ if(options.skipRender!==true)render();
 }
 function enterDemo(){pilotCandidate=null;pilotStageMessage='';mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
 function exitDemo(){pilotCandidate=null;transferDraft=null;pilotStageMessage='';loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
