@@ -199,29 +199,26 @@ function officialResultsDashboard(d){
 }
 
 function assessments(d){
- const stickerClasses=d.classrooms.filter(c=>d.students.some(s=>s.classroom_id===c.id&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')))
-  .slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
- const stickerOptions=stickerClasses.map(c=>{
+ const packetClasses=d.classrooms.filter(c=>d.students.some(s=>s.classroom_id===c.id&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')))
+   .slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+ const packetOptions=packetClasses.map(c=>{
   const n=d.students.filter(s=>s.classroom_id===c.id&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')).length;
-  const chosen=c.label==='3º B'?' selected':'';
-  return '<option value="'+clean(c.id)+'"'+chosen+'>'+clean(c.label)+' — '+n+' etiquetas</option>';
+  return '<option value="'+clean(c.id)+'"'+(c.label==='3º B'?' selected':'')+'>'+clean(c.label)+' — '+n+' estudantes</option>';
  }).join('');
  const standardPrinting=mode==='live'&&role==='pedagogical_admin'?
-  '<div class="card"><h2>Impressão padronizada por ano — ficha com etiqueta QR</h2>'+
-  '<p>Não é necessário cadastrar os alunos novamente. Imprima um modelo por ano e as etiquetas QR individuais dos estudantes.</p>'+
-  '<label for="standardGradeSelect"><strong>Ano escolar</strong></label>'+
-  '<select id="standardGradeSelect" style="display:block;width:100%;max-width:300px;padding:10px;margin:10px 0 15px;border:1px solid #ceded6;border-radius:9px">'+
-   [1,2,3,4,5].map(y=>'<option value="'+y+'"'+(y===3?' selected':'')+'>'+y+'º ano</option>').join('')+'</select>'+
-  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-standard-print="integrated">Imprimir ficha X padronizada (1 folha A4)</button>'+
-  '<button type="button" class="smallbtn" data-standard-print="activities">Atividades padronizadas de LP + Matemática (2 folhas)</button></div>'+
-  '<p class="intro-note"><strong>Atenção:</strong> a ficha X só será identificada pelo leitor depois de receber a etiqueta QR no espaço superior direito. Imprima em A4 a 100% (tamanho real). A etiqueta mede 37 × 43 mm.</p>'+
-  '<hr style="border:none;border-top:1px solid #e3e9e3;margin:20px 0">'+
-  '<h3>Etiquetas QR individuais para colar</h3>'+
-  '<p>Escolha a turma. Os nomes e QR Codes serão gerados a partir das matrículas já existentes, sem novo cadastro.</p>'+
-  '<label for="standardQrClassSelect"><strong>Turma</strong></label>'+
-  '<select id="standardQrClassSelect" style="display:block;width:100%;max-width:350px;padding:10px;margin:10px 0 15px;border:1px solid #ceded6;border-radius:9px">'+stickerOptions+'</select>'+
-  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-sticker-qr-selected '+(stickerClasses.length?'':'disabled')+'>Imprimir etiquetas QR desta turma</button></div>'+
-  '<p class="intro-note">As etiquetas têm tamanho exato para o espaço da ficha padrão. O nome impresso abaixo da borda serve para conferir a distribuição; recorte apenas dentro da borda. Faça primeiro um teste com uma ficha completa e fotografada.</p></div>':'';
+  '<div class="card"><h2>Preparação escolar das avaliações — prontas para entregar</h2>'+
+  '<p>A coordenação ou secretaria prepara e imprime os materiais para cada turma. <strong>As professoras recebem tudo pronto: sem etiquetas, recortes ou colagens.</strong></p>'+
+  '<label for="schoolPacketClassSelect"><strong>Selecione a turma</strong></label>'+
+  '<select id="schoolPacketClassSelect" style="display:block;width:100%;max-width:360px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+packetOptions+'</select>'+
+  '<div class="buttonrow">'+
+  '<button type="button" class="smallbtn solid" data-school-packet="correction" '+(packetClasses.length?'':'disabled')+'>Imprimir fichas de correção prontas (QR integrado)</button>'+
+  '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa por estudante</button>'+
+  '<button type="button" class="smallbtn" data-school-packet="activities" '+(packetClasses.length?'':'disabled')+'>Imprimir só atividades de LP + Matemática</button>'+
+  '</div>'+
+  '<p class="intro-note"><strong>Como funciona:</strong> a opção de correção imprime uma folha A4 por estudante, já com nome, turma, QR exclusivo e todos os quadrinhos de X. A opção completa inclui também as duas páginas de atividades. Nada precisa ser colado nas folhas.</p>'+
+  '<p class="intro-note"><strong>Impressão:</strong> A4, escala 100%, sem ajustar à página. Faça um teste de uma ficha real fotografada antes de imprimir o pacote inteiro. Entregue as folhas organizadas pela turma e preserve os dados pessoais em ambiente escolar.</p>'+
+  '<p class="intro-note"><strong>Depois da aplicação:</strong> a professora marca os X e fotografa somente a ficha de correção. O leitor associa o QR ao cadastro existente. O envio diretamente pelo acesso individual de cada professora é a próxima etapa de implantação.</p>'+
+  '</div>':'';
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
 
  let studentSection='';
@@ -260,8 +257,8 @@ function assessments(d){
     <p class="intro-note">Use a confirmação da turma inteira somente se TODOS os nomes e a turma estiverem corretos na lista oficial atual da secretaria. Se houver dúvida, confirme individualmente.</p>
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
-    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-sticker-qr-class="${clean(selectedRosterClass)}">Etiquetas individuais para colar (${printableCodes})</button> <button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Preparar atividades LP + Matemática + ficha X (${printableCodes} estudantes)</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
-    <p class="intro-note">Cada estudante tem três páginas: Língua Portuguesa, Matemática e ficha integrada de X. Somente a ficha de X deve ser digitalizada. A publicação exige leitura, conferência pedagógica e autorização da coordenação.</p></div>`;
+    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Imprimir avaliação completa (${printableCodes} estudantes)</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
+    <p class="intro-note">A escola imprime e entrega as fichas com QR incorporado. A professora apenas aplica, registra os X e fotografa a folha de correção. O envio para o painel exige conferência e autorização institucional.</p></div>`;
 
  } else {
    const activeStudents=d.students.filter(s=>s.active);
@@ -348,6 +345,21 @@ function openFichas(classroomId,studentId){
  catch(err){console.warn('Falha ao preparar fichas de avaliação',err?.message);rosterReviewMessage='Não foi possível abrir as fichas: '+String(err?.message||'erro de impressão');render();}
 }
 
+function printSchoolReadyPacket(kind){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const classId=$('schoolPacketClassSelect')?.value||'';
+ const klass=loaded.classrooms.find(c=>c.id===classId);
+ const students=loaded.students.filter(s=>s.classroom_id===classId&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
+ if(!klass||!students.length){window.alert('Selecione uma turma com estudantes confirmados.');return;}
+ try{
+  if(!window.LuminaFichas?.printSchoolPacket)throw new Error('Atualize a página para carregar o novo pacote escolar.');
+  const existing=loaded.results.filter(r=>students.some(s=>s.id===r.student_id)).length;
+  if(existing>0&&!window.confirm('Esta turma já tem '+existing+' resultado(s) oficial(is). Deseja imprimir também fichas de estudantes que já têm avaliação registrada? Isso não gera lançamento duplicado, mas pode desperdiçar papel.'))return;
+  window.LuminaFichas.printSchoolPacket(students,klass,kind);
+ }catch(error){
+  window.alert('Não foi possível preparar o material: '+String(error?.message||'erro de impressão'));
+ }
+}
 function printQrStickersForClass(classroomId){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
  const klass=loaded.classrooms.find(c=>c.id===classroomId);
@@ -970,7 +982,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261109-digitalizacao-drive-v13';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const stdPrint=e.target.closest('[data-standard-print]');if(stdPrint){printStandardForGrade(stdPrint.dataset.standardPrint);return;}const selectedStickers=e.target.closest('[data-sticker-qr-selected]');if(selectedStickers){printQrStickersForClass($('standardQrClassSelect')?.value||'');return;}const labelPrint=e.target.closest('[data-sticker-qr-class]');if(labelPrint){printQrStickersForClass(labelPrint.dataset.stickerQrClass);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261109-digitalizacao-drive-v13';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const schoolPacket=e.target.closest('[data-school-packet]');if(schoolPacket){printSchoolReadyPacket(schoolPacket.dataset.schoolPacket);return;}const stdPrint=e.target.closest('[data-standard-print]');if(stdPrint){printStandardForGrade(stdPrint.dataset.standardPrint);return;}const selectedStickers=e.target.closest('[data-sticker-qr-selected]');if(selectedStickers){printQrStickersForClass($('standardQrClassSelect')?.value||'');return;}const labelPrint=e.target.closest('[data-sticker-qr-class]');if(labelPrint){printQrStickersForClass(labelPrint.dataset.stickerQrClass);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
