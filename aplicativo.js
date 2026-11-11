@@ -215,6 +215,7 @@ function assessments(d){
   '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa por estudante</button>'+
   '<button type="button" class="smallbtn" data-school-packet="activities" '+(packetClasses.length?'':'disabled')+'>Imprimir só atividades de LP + Matemática</button>'+
   '</div>'+
+  '<label style="display:flex;align-items:center;gap:10px;margin:15px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked style="width:18px;height:18px"> Imprimir somente estudantes sem resultado oficial (evita duplicar fichas já publicadas)</label>'+
   '<p class="intro-note"><strong>Como funciona:</strong> a opção de correção imprime uma folha A4 por estudante, já com nome, turma, QR exclusivo e todos os quadrinhos de X. A opção completa inclui também as duas páginas de atividades. Nada precisa ser colado nas folhas.</p>'+
   '<p class="intro-note"><strong>Impressão:</strong> A4, escala 100%, sem ajustar à página. Faça um teste de uma ficha real fotografada antes de imprimir o pacote inteiro. Entregue as folhas organizadas pela turma e preserve os dados pessoais em ambiente escolar.</p>'+
   '<p class="intro-note"><strong>Depois da aplicação:</strong> a professora marca os X e fotografa somente a ficha de correção. O leitor associa o QR ao cadastro existente. O envio diretamente pelo acesso individual de cada professora é a próxima etapa de implantação.</p>'+
@@ -353,9 +354,12 @@ function printSchoolReadyPacket(kind){
  if(!klass||!students.length){window.alert('Selecione uma turma com estudantes confirmados.');return;}
  try{
   if(!window.LuminaFichas?.printSchoolPacket)throw new Error('Atualize a página para carregar o novo pacote escolar.');
-  const existing=loaded.results.filter(r=>students.some(s=>s.id===r.student_id)).length;
-  if(existing>0&&!window.confirm('Esta turma já tem '+existing+' resultado(s) oficial(is). Deseja imprimir também fichas de estudantes que já têm avaliação registrada? Isso não gera lançamento duplicado, mas pode desperdiçar papel.'))return;
-  window.LuminaFichas.printSchoolPacket(students,klass,kind);
+  const publishIds=new Set(loaded.results.map(r=>r.student_id));
+  const onlyPending=$('skipPublishedSchoolPacket')?.checked!==false;
+  const chosen=onlyPending?students.filter(s=>!publishIds.has(s.id)):students;
+  if(!chosen.length){window.alert('Todos os estudantes desta turma já têm resultado oficial. Desmarque o filtro para reimprimir.');return;}
+  if(!onlyPending&&students.length!==chosen.length&&!window.confirm('Reimprimir fichas mesmo para estudantes já avaliados?'))return;
+  window.LuminaFichas.printSchoolPacket(chosen,klass,kind);
  }catch(error){
   window.alert('Não foi possível preparar o material: '+String(error?.message||'erro de impressão'));
  }
