@@ -16,6 +16,7 @@ let selectedRosterClass='';
 let rosterReviewMessage='';
 let pilotCandidate=null;
 let pilotStageMessage='';
+let transferDraft=null; // apenas memória da sessão da coordenação; nunca armazenar dados dos alunos no navegador permanentemente
 let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
  ['1º A','matutino'],['1º B','vespertino'],['2º A','matutino'],['2º B','matutino'],['2º C','vespertino'],
@@ -54,6 +55,11 @@ function render(){
  }
  $('content').innerHTML=pageMarkup;
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
+ // Se o salvamento falhar, voltar à aba mantém a conferência na memória da sessão.
+ if(currentPage==='lotes'&&mode==='live'&&role==='pedagogical_admin'&&
+    transferDraft?.ownerId===profile?.user_id&&transferDraft.csv){
+  reviewCSV(new File([transferDraft.csv],'lote_recuperado_da_sessao.csv',{type:'text/csv'}));
+ }
  const classroomPicker=$('studentClassFilter'); if(classroomPicker)classroomPicker.addEventListener('change',e=>{selectedRosterClass=e.target.value;render()});
  const resultPicker=$('resultsClassFilter');if(resultPicker)resultPicker.addEventListener('change',e=>{selectedResultsClass=e.target.value;render()});
 }
@@ -576,7 +582,7 @@ function checkReaderCSV(csvText, authorizedStudents=[], classrooms=[], checkRost
  }
  return {tallies,rows,checkedRoster:checkRoster};
 }
-function reviewCSV(file){
+function reviewCSV(file,options={}){
  const area=$('csvReport');pilotCandidate=null;if(!area||!file)return;
  if(file.size>2_000_000){area.textContent='Arquivo muito grande. Separe o lote em arquivos CSV menores.';return;}
  const startedMode=mode,startedUser=profile?.user_id;
@@ -638,7 +644,14 @@ function reviewCSV(file){
          save.textContent='Guardar este lote piloto para conferência pedagógica';
          save.onclick=()=>void stagePilotCSV(save,area);
          area.appendChild(save);
-         const note=document.createElement('p');note.textContent='Este comando grava apenas respostas provisórias vinculadas às matrículas. Nenhuma fotografia é enviada e nenhuma avaliação oficial é publicada.';area.appendChild(note);
+         const note=document.createElement('p');
+         note.textContent=options.autoStage?'Conferência concluída. Salvando lote na área protegida da coordenação. Aguarde a confirmação de gravação antes de sair. Nenhuma avaliação oficial será publicada.':
+          'Ainda não foi salvo: clique em Guardar este lote piloto. Somente as respostas provisórias serão armazenadas; nenhuma foto ou avaliação oficial será publicada.';
+         area.appendChild(note);
+         if(options.autoStage){
+           save.disabled=true;save.textContent='Salvando lote provisório na área protegida...';
+           void stagePilotCSV(save,area,{skipConfirmation:true,replyTo:options.replyTo});
+         }
        }else if(tallies.total>0){
          const why=[];
          if(!activeCycle)why.push('ciclo de 2026 indisponível');
@@ -646,12 +659,21 @@ function reviewCSV(file){
          if(tallies.review)why.push('fichas com pendências');
          if(classes.size>1)why.push('mistura de turmas');
          if(conflict)why.push('matrícula com registro provisório anterior');
-         const msg=document.createElement('p');msg.textContent='Gravação provisória bloqueada: '+(why.join('; ')||'lote não elegível')+'. A conferência local permanece disponível.';area.appendChild(msg);
+         const reason=why.join('; ')||'lote não elegível';
+         const msg=document.createElement('p');
+         msg.textContent='O lote NÃO FOI SALVO: '+reason+'. Corrija a pendência antes de sair desta tela.';area.appendChild(msg);
+         if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason});
        }
      }
-   }catch(err){area.textContent=err?.message||'Não foi possível interpretar o CSV.';}
+   }catch(err){
+     area.textContent=err?.message||'Não foi possível interpretar o CSV.';
+     if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:err?.message||'falha na conferência'});
+   }
  };
- reader.onerror=()=>area.textContent='Não foi possível ler o arquivo local.';
+ reader.onerror=()=>{
+   area.textContent='Não foi possível ler o arquivo local. O lote não foi salvo.';
+   if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Arquivo não pôde ser lido'});
+ };
  reader.readAsText(file,'utf-8');
 }
 
@@ -678,11 +700,17 @@ function pilotRecords(csvText,authorizedStudents){
  if(classrooms.size!==1)throw new Error('Separe o piloto por turma.');
  return output;
 }
-async function stagePilotCSV(button,area){
+function notifyPilotTransfer(target,payload){
+ try{
+  if(target&&window.location.origin)
+   target.postMessage({type:'lumina:stage-status:v1',...payload},window.location.origin);
+ }catch(error){console.warn('A janela do leitor já foi fechada.',error?.message);}
+}
+async function stagePilotCSV(button,area,options={}){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api||!pilotCandidate)return;
  const candidate=pilotCandidate;
  if(candidate.ownerId!==profile.user_id)return;
- if(!window.confirm('Guardar este lote PILOTO na área protegida para conferência pedagógica? Nenhum resultado oficial será publicado e nenhuma foto será enviada.'))return;
+ if(!options.skipConfirmation&&!window.confirm('Salvar este lote em área protegida para conferência pedagógica? Nenhum resultado oficial será publicado e nenhuma foto será enviada.'))return;
  button.disabled=true;button.textContent='Registrando lote provisório...';
  try{
   const {data:auth,error:authErr}=await api.auth.getUser();
@@ -698,14 +726,18 @@ async function stagePilotCSV(button,area){
   });
   if(result.error)throw new Error(result.error.message||'O banco recusou o lote.');
   if(mode!=='live'||profile?.user_id!==candidate.ownerId)return;
+  const written=Number(result.data?.rows_staged||0);
+  if(written!==rows.length)throw new Error('O banco não confirmou a gravação integral do lote.');
   pilotCandidate=null;
-  pilotStageMessage='Lote piloto registrado em área protegida: '+Number(result.data?.rows_staged||0)+' ficha(s) em revisão pedagógica. Nenhuma avaliação oficial foi publicada.';
+  transferDraft=null;
+  notifyPilotTransfer(options.replyTo,{saved:true,count:written});
+  pilotStageMessage='Lote piloto SALVO em área protegida: '+written+' ficha(s) em conferência pedagógica. Pode mudar de página; nenhum resultado oficial foi publicado.';
   area.replaceChildren();
   const success=document.createElement('p');
   success.textContent='Lote piloto guardado na área protegida. Fichas recebidas: '+Number(result.data?.rows_staged||0)+'. Situação: EM CONFERÊNCIA PEDAGÓGICA. Nenhum resultado oficial foi publicado.';
   area.appendChild(success);
   const hint=document.createElement('p');
-  hint.textContent='As fotografias originais não foram armazenadas nesta etapa. Preserve-as em local institucional protegido até ativarmos a área de imagens.';
+  hint.textContent='Pode mudar de página: os resultados provisórios ficaram armazenados no banco. As fotografias originais não foram armazenadas. Preserve-as em local institucional protegido.';
   area.appendChild(hint);
   await refreshLive();
  }catch(error){
@@ -714,7 +746,8 @@ async function stagePilotCSV(button,area){
    warning.textContent='Não foi possível registrar o lote: '+(error?.message||'falha não identificada')+'. Nenhuma avaliação oficial foi alterada.';
    area.appendChild(warning);
   }
-  button.disabled=false;button.textContent='Tentar registrar lote provisório';
+  button.disabled=false;button.textContent='Tentar salvar lote provisório';
+  notifyPilotTransfer(options.replyTo,{saved:false,reason:error?.message||'erro ao salvar no banco'});
  }
 }
 
@@ -740,9 +773,14 @@ window.addEventListener('message',event=>{
  if(!frame||event.source!==frame.contentWindow||event.data?.type!=='lumina:reader-pilot:v1')return;
  try{
   const csv=readerRowsToCSV(event.data.rows);
-  reviewCSV(new File([csv],'lote_piloto_validacao.csv',{type:'text/csv'}));
+  transferDraft={csv,ownerId:profile.user_id};
+  reviewCSV(new File([csv],'lote_piloto_validacao.csv',{type:'text/csv'}),{autoStage:true,replyTo:event.source});
   const area=$('csvReport');if(area)area.scrollIntoView({behavior:'smooth',block:'start'});
- }catch(err){const area=$('csvReport');if(area)area.textContent='Lote não recebido: '+(err?.message||'erro de validação');}
+ }catch(err){
+   const area=$('csvReport');
+   if(area)area.textContent='O lote NÃO FOI SALVO: '+(err?.message||'erro de validação');
+   notifyPilotTransfer(event.source,{saved:false,reason:err?.message||'falha de validação'});
+ }
 });
 
 function parseDelimited(text,delimiter){
@@ -805,7 +843,7 @@ async function refreshLive(){
  render();
 }
 function enterDemo(){pilotCandidate=null;pilotStageMessage='';mode='demo';role=$('demoRole').value;profile=null;currentPage='visao';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');render();}
-function exitDemo(){pilotCandidate=null;pilotStageMessage='';loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
+function exitDemo(){pilotCandidate=null;transferDraft=null;pilotStageMessage='';loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
 // A pessoa convidada configura sua própria senha após a confirmação do Supabase.
 const invitationFlow = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type');
 let changingPassword = invitationFlow === 'invite' || invitationFlow === 'recovery';
