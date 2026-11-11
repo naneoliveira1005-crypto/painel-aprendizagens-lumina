@@ -71,6 +71,9 @@ function collectErrors(entry){
  for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': não foi possível confirmar um único X');}
  if(entry.shapeWarning)errors.push('Imagem não enquadrada (confira QR e X)');
  if(entry.alignmentWarning)errors.push('Alinhamento dos quadrinhos precisa de revisão');
+ if(!entry.mathCheck)errors.push('A grade matemática ainda não passou na segunda verificação; conferir imagem');
+ else if(entry.mathCheck.disagreements?.length)
+  errors.push('As duas leituras da Matemática divergem em '+entry.mathCheck.disagreements.join(', ')+'; revisão obrigatória');
  if(entry.code){const duplicate=queue.some(o=>o!==entry&&o.code===entry.code&&o.state!=='pending');if(duplicate)errors.push('Código repetido');}
  return errors;
 }
@@ -627,8 +630,38 @@ async function normalizeByQr(canvas){
   return {canvas,found:false};
  }
 }
+
+function rotateQuarter(source,clockwise){
+ const output=document.createElement('canvas');
+ output.width=source.height;output.height=source.width;
+ const ctx=output.getContext('2d',{willReadFrequently:true});
+ if(clockwise){ctx.translate(output.width,0);ctx.rotate(Math.PI/2);}
+ else{ctx.translate(0,output.height);ctx.rotate(-Math.PI/2);}
+ ctx.drawImage(source,0,0);
+ return output;
+}
+async function orientPhotograph(source){
+ if(source.width<=source.height*1.08)return {canvas:source,rotated:false};
+ const options=[
+  {canvas:rotateQuarter(source,true),label:'90° horário'},
+  {canvas:rotateQuarter(source,false),label:'90° anti-horário'}
+ ];
+ let chosen=null;
+ for(const option of options){
+  const reading=getAnswers(option.canvas),code=await readQr(option.canvas);
+  const score=readingQuality(reading,code,false);
+  if(!chosen||score>chosen.score){
+   chosen={canvas:option.canvas,rotated:true,method:option.label,
+    score,code};
+  }
+ }
+ return chosen||{canvas:source,rotated:false};
+}
+
 async function analyzeOne(entry){
- const original=await renderEntry(entry,true);
+ const unrotated=await renderEntry(entry,true);
+ const orientation=entry.kind==='img'?await orientPhotograph(unrotated):{canvas:unrotated,rotated:false};
+ const original=orientation.canvas;
  // Primeiro tenta reconhecer a própria ficha, sem cortar ou deformar a foto.
  // A proporção da FOTO nunca deve ser confundida com a proporção da FOLHA.
  const originalRead=getAnswers(original);
@@ -687,9 +720,9 @@ async function analyzeOne(entry){
    }
   }
  }
- entry.correctedCanvas=winner.canvas===original?null:winner.canvas;
- entry.autoCropStatus=winner.method?winner.method+';':'';
- entry.scanDiagnostics=winner.reading.details||null;entry.unmatchedBoxes=winner.reading.unmatched||[];
+ entry.correctedCanvas=winner.canvas===unrotated?null:winner.canvas;
+ entry.autoCropStatus=(orientation.rotated?'Foto girada automaticamente ('+orientation.method+'); ':'')+(winner.method?winner.method+';':'');
+ entry.scanDiagnostics=winner.reading.details||null;entry.unmatchedBoxes=winner.reading.unmatched||[];entry.mathCheck=winner.reading.mathCheck||null;
  entry.answers=winner.reading.answers;entry.scores=winner.reading.scores;
  entry.thresholds=winner.reading.thresholds;entry.align=winner.reading.align;
  entry.alignmentWarning=!winner.reading.aligned;
