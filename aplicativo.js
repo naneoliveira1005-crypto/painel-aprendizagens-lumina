@@ -225,8 +225,10 @@ function assessments(d){
   '<p><strong>A escola imprime e entrega prontas.</strong> A professora preenche completamente os quadradinhos, digitaliza pelo Drive e envia o PDF ao painel. Não precisa cadastrar novamente os estudantes.</p>'+
   '<label for="schoolPacketClassSelect"><strong>Turma</strong></label>'+
   '<select id="schoolPacketClassSelect" style="display:block;width:100%;max-width:360px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+packetOptions+'</select>'+
-  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-school-packet="pilot" '+(packetClasses.length?'':'disabled')+'>Imprimir uma ficha para conferir (A4)</button></div>'+
-  '<p class="intro-note">O novo modelo já traz nome, turma, QR individual e quatro marcas de alinhamento. A impressão de lotes inteiros será liberada após a conferência do teste no leitor publicado. Imprima em A4, tamanho real (100%).</p>'+
+  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-school-packet="pilot" '+(packetClasses.length?'':'disabled')+'>Imprimir 5 fichas para validação</button>'+
+  '<button type="button" class="smallbtn" data-school-packet="correction" '+(packetClasses.length?'':'disabled')+'>Imprimir todas as fichas de correção da turma</button>'+
+  '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa da turma</button></div>'+
+  '<p class="intro-note"><strong>Um único modelo OMR V2:</strong> QR individual, nome, turma e quadradinhos para pintar. A escola imprime; a professora só preenche, digitaliza e envia. Primeiro confira a leitura das cinco fichas de validação antes de usar o restante. Imprima em A4, tamanho real (100%).</p>'+
   '<label style="display:flex;align-items:center;gap:8px;margin:14px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked> Excluir estudantes que já têm avaliação oficial</label>'+
   '</div>':'';
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
@@ -346,27 +348,37 @@ async function updateStudentReview(studentId,nextActive,button){
 
 function printSchoolReadyPacket(kind){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ if(!['pilot','correction','full'].includes(kind))return;
  const classId=$('schoolPacketClassSelect')?.value||'';
  const klass=loaded.classrooms.find(c=>c.id===classId);
  const students=loaded.students.filter(s=>s.classroom_id===classId&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
  if(!klass||!students.length){window.alert('Selecione uma turma com estudantes confirmados.');return;}
  try{
-  if(!window.LuminaFichas?.printSchoolPacket)throw new Error('Atualize a página para carregar o novo pacote escolar.');
-  const publishIds=new Set(loaded.results.map(r=>r.student_id));
+  if(!window.LuminaFichas?.printSchoolPacket)throw new Error('Atualize a página para carregar o modelo OMR V2.');
+  const published=new Set(loaded.results.map(r=>r.student_id));
   const onlyPending=$('skipPublishedSchoolPacket')?.checked!==false;
-  const chosen=onlyPending?students.filter(s=>!publishIds.has(s.id)):students;
-  if(!chosen.length){window.alert('Todos os estudantes desta turma já têm resultado oficial. Desmarque o filtro para reimprimir.');return;}
+  const eligible=onlyPending?students.filter(s=>!published.has(s.id)):students;
+  if(!eligible.length){window.alert('Nenhum estudante elegível nesta turma. Desmarque o filtro para reimprimir.');return;}
+  // Para validação, escolher fichas diferentes das já gravadas como piloto.
+  const previouslyTested=new Set(loaded.importRows.filter(r=>
+    ['awaiting_pedagogical_review','ready_for_commit','committed'].includes(r.validation_status)
+  ).map(r=>r.student_id));
+  const chosen=kind==='pilot'?eligible.filter(s=>!previouslyTested.has(s.id)).slice(0,5):eligible;
+  if(!chosen.length){window.alert('Não há novas fichas disponíveis para validação nesta turma.');return;}
+  const pages=chosen.length*(kind==='full'?3:1);
   if(kind!=='pilot'){
-   window.alert('Impressão em lote temporariamente bloqueada. Primeiro precisamos validar uma ficha V2 impressa e digitalizada.');
-   return;
+   const label=kind==='full'?'avaliação completa':'fichas de correção';
+   if(!window.confirm('Preparar '+pages+' página(s) A4 de '+label+' para '+chosen.length+
+     ' estudantes do '+klass.label+'? O arquivo será aberto para impressão ou PDF. Antes de distribuir, confira o resultado das cinco fichas de validação.'))return;
   }
-  const sample=chosen.filter(s=>!publishIds.has(s.id)).slice(0,1);
-  if(!sample.length){window.alert('Não há estudantes sem resultado oficial nesta turma.');return;}
-  window.LuminaFichas.printSchoolPacket(sample,klass,'correction');
+  const result=window.LuminaFichas.printSchoolPacket(chosen,klass,kind==='full'?'full':'correction');
+  if(Number(result.students)!==chosen.length||Number(result.pages)!==pages)
+    throw new Error('O total de folhas geradas não coincidiu com a turma.');
  }catch(error){
-  window.alert('Não foi possível preparar o material: '+String(error?.message||'erro de impressão'));
+  window.alert('Não foi possível preparar as fichas: '+String(error?.message||'erro de impressão'));
  }
 }
+
 function formatImportedRow(row,view){
  const student=view.students.find(s=>s.id===row.student_id);
  if(!student||!student.active||student.local_reference!==row.qr_code)return '';
