@@ -543,9 +543,31 @@ async function analyzeOne(entry){
   pageLocated:originalComplete,score:readingQuality(originalRead,originalCode,false),
   method:originalComplete?'QR e grade reconhecidos diretamente na foto':''
  };
+ // A foto real pode conter margens largas e fundo ao redor da folha.
+ // Antes de depender do detector de bordas A4, tente normalizar pelos
+ // quatro cantos do QR impresso: essa referência já está na própria ficha.
+ // Só seleciona a nova leitura se aumentar a quantidade de campos
+ // reconhecidos com alinhamento confiável. Nunca preenche por estimativa.
+ if(!originalComplete&&entry.kind==='img'){
+  try{
+   const byQr=await normalizeByQr(original);
+   if(byQr.found){
+    const qrRead=getAnswers(byQr.canvas);
+    const qrCode=byQr.code||originalCode;
+    const qrScore=readingQuality(qrRead,qrCode,false);
+    if(qrRead.aligned&&qrScore>winner.score){
+     winner={canvas:byQr.canvas,reading:qrRead,code:qrCode,
+      pageLocated:true,score:qrScore,method:'Alinhamento automático pelo QR da ficha'};
+    }
+   }
+  }catch(error){
+   console.warn('Alinhamento pela referência QR indisponível.',error?.message);
+  }
+ }
  // A digitalização tipo Drive é uma segunda via: localiza as quatro bordas,
  // corrige a perspectiva e só então reinterpreta a grade de X.
  if(!originalComplete&&entry.kind==='img'&&
+    !GROUPS.every(([,key,choices])=>choices.includes(winner.reading.answers?.[key]))&&
     typeof window.LuminaAutoA4?.detect==='function'){
   const found=window.LuminaAutoA4.detect(original);
   if(found&&found.confidence>=.60){
