@@ -392,9 +392,106 @@ function getAnswersFromMathAnchors(all){
   confidence:unresolved?'review':'high',unmatched,details};
 }
 
+
+/*
+ * Segunda leitura matemática por grade fixa:
+ * calcula os centros de 7 linhas x 4 colunas com todos os quadradinhos,
+ * inclusive os não marcados. Lê somente o CENTRO de cada caixa.
+ * O contorno de um X pode se fundir ao quadrado, mas isso não apaga seu centro.
+ * Esta leitura não escreve dados nem afeta fichas já armazenadas.
+ */
+function scanRegularMathGrid(all){
+ const {b,w,h,boxes}=all;
+ const base=10*w/PAGE[0];
+ const forms=boxes.filter(q=>
+  q.w>=base*.72&&q.h>=base*.72&&q.w<=base*1.65&&q.h<=base*1.65&&
+  q.w/q.h>.70&&q.w/q.h<1.40&&
+  q.x>.46*w&&q.x<.91*w&&q.y>.48*h&&q.y<.73*h);
+ if(forms.length<24||forms.length>34)return null;
+ const cluster=(vals,k)=>{
+  const min=Math.min(...vals),max=Math.max(...vals);
+  if(max-min<k*base)return null;
+  let centers=Array.from({length:k},(_,i)=>min+(max-min)*i/(k-1)),assign=[];
+  for(let iter=0;iter<25;iter++){
+   assign=vals.map(v=>{
+    let winner=0,dist=Infinity;
+    for(let j=0;j<k;j++){const d=Math.abs(v-centers[j]);if(d<dist){winner=j;dist=d;}}
+    return winner;
+   });
+   const counts=Array(k).fill(0),sums=Array(k).fill(0);
+   for(let i=0;i<vals.length;i++){counts[assign[i]]++;sums[assign[i]]+=vals[i];}
+   if(counts.some(n=>n===0))return null;
+   const next=sums.map((sum,i)=>sum/counts[i]);
+   const shift=next.reduce((t,v,i)=>t+Math.abs(v-centers[i]),0);
+   centers=next;
+   if(shift<.02)break;
+  }
+  return {centers,assign};
+ };
+ const cols=cluster(forms.map(q=>q.x),4);
+ const rows=cluster(forms.map(q=>q.y),7);
+ if(!cols||!rows)return null;
+ const x=cols.centers,y=rows.centers;
+ const xstep=x.slice(1).map((n,i)=>n-x[i]);
+ const ystep=y.slice(1).map((n,i)=>n-y[i]);
+ if(Math.min(...xstep)<w*.055||Math.max(...xstep)>w*.13||
+    Math.min(...ystep)<h*.012||Math.max(...ystep)>h*.042)return null;
+ const found=Array.from({length:7},()=>Array(4).fill(0));
+ for(let i=0;i<forms.length;i++)found[rows.assign[i]][cols.assign[i]]++;
+ if(found.some(row=>row.filter(n=>n===1).length<3))return null;
+ if(Array.from({length:4},(_,j)=>found.reduce((n,row)=>n+(row[j]===1?1:0),0)).some(n=>n<5))return null;
+ if(found.some(row=>row.some(n=>n>1)))return null;
+ const size=median(forms.map(q=>Math.min(q.w,q.h)));
+ const from=Math.round(size*.30),to=Math.round(size*.70);
+ if(to-from<3)return null;
+ const candidates={},confidence={};
+ for(let i=0;i<7;i++){
+  const key='M'+(i+1);
+  const scores=[];
+  for(let j=0;j<4;j++){
+   const xx=Math.round(x[j]),yy=Math.round(y[i]);
+   let black=0,total=0;
+   for(let dy=from;dy<to;dy++)for(let dx=from;dx<to;dx++){
+    const px=xx+dx,py=yy+dy;
+    if(px>=0&&py>=0&&px<w&&py<h){black+=b[py*w+px];total++;}
+   }
+   if(!total)return null;
+   scores.push({value:black/total,choice:M[i][j]});
+  }
+  scores.sort((a,b)=>b.value-a.value);
+  const max=scores[0].value,runner=scores[1].value,delta=max-runner;
+  // Segurança: o X tem centro escuro e as outras três caixas permanecem claras.
+  // Sem contraste suficiente, o resultado é "conferir", nunca estimado.
+  candidates[key]=max>=.36&&delta>=.30&&runner<=.20?scores[0].choice:'';
+  confidence[key]={max,runner,delta};
+ }
+ return {answers:candidates,confidence,anchors:forms.length};
+}
+function corroborateMath(reading,all){
+ const verifier=scanRegularMathGrid(all);
+ if(!verifier||!reading)return reading;
+ const checked={...reading,answers:{...reading.answers}};
+ const disagreements=[];
+ for(let i=1;i<=7;i++){
+  const key='M'+i,ref=verifier.answers[key],original=checked.answers[key];
+  if(ref&&(!original||original===ref)){
+   checked.answers[key]=ref; // recupera um X somente após verificação independente
+  }else if(ref&&original&&original!==ref){
+   checked.answers[key]=''; // discordância: bloqueia o lançamento e exige revisão
+   disagreements.push(key);
+  }else if(!ref&&original){
+   // Na dúvida, não altera o algoritmo primário; mantém aviso para a auditoria.
+   disagreements.push(key);
+  }
+ }
+ checked.mathCheck={method:'centros de grade',anchors:verifier.anchors,
+  confidence:verifier.confidence,disagreements};
+ return checked;
+}
+
 function getAnswers(canvas){
  const all=bwCandidates(canvas);
- const matched=getAnswersFromGrid(all)||getAnswersFromMathAnchors(all);if(matched)return matched;
+ const matched=getAnswersFromGrid(all)||getAnswersFromMathAnchors(all);if(matched)return corroborateMath(matched,all);
  const scores={},align={};
  // Matemática contém 28 pontos de ancoragem: usamos sua geometria também como
  // ponto de partida para blocos menores, evitando trocar as linhas entre si.
@@ -414,7 +511,7 @@ function getAnswers(canvas){
  thresholds.L=readingThreshold(scores);
  answers.L=L.filter(k=>scores[k]>=thresholds.L);
  const aligned=align.M>=20&&align.H>=3&&align.T>=4;
- return {answers,scores,align,aligned,candidates:all.boxes.length,thresholds};
+ return corroborateMath({answers,scores,align,aligned,candidates:all.boxes.length,thresholds},all);
 }
 function markSummary(entry){
  if(!entry.scores)return 'Resultado editado manualmente. Intensidades não disponíveis.';
