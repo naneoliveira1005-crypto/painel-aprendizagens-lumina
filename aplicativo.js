@@ -199,6 +199,16 @@ function officialResultsDashboard(d){
 }
 
 function assessments(d){
+ const standardPrinting=mode==='live'&&role==='pedagogical_admin'?
+  '<div class="card"><h2>Impressão padronizada por ano — ficha com etiqueta QR</h2>'+
+  '<p>Não é necessário cadastrar os alunos novamente. Imprima um modelo por ano e as etiquetas QR individuais dos estudantes.</p>'+
+  '<label for="standardGradeSelect"><strong>Ano escolar</strong></label>'+
+  '<select id="standardGradeSelect" style="display:block;width:100%;max-width:300px;padding:10px;margin:10px 0 15px;border:1px solid #ceded6;border-radius:9px">'+
+   [1,2,3,4,5].map(y=>'<option value="'+y+'">'+y+'º ano</option>').join('')+'</select>'+
+  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-standard-print="integrated">Imprimir ficha X padronizada (1 folha A4)</button>'+
+  '<button type="button" class="smallbtn" data-standard-print="activities">Atividades padronizadas de LP + Matemática (2 folhas)</button></div>'+
+  '<p class="intro-note"><strong>Atenção:</strong> a ficha X só será identificada pelo leitor depois de receber a etiqueta QR no espaço superior direito. Imprima em A4 a 100% (tamanho real). A etiqueta mede 37 × 43 mm.</p>'+
+  '<p class="intro-note">Para imprimir as etiquetas, selecione uma turma no cadastro de estudantes abaixo e clique em <strong>Etiquetas individuais para colar</strong>.</p></div>':'';
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
 
  let studentSection='';
@@ -226,7 +236,6 @@ function assessments(d){
     <p><strong>${pending} registro(s) pendentes</strong> e <strong>${verified} confirmado(s)</strong> na escola. Pendentes ficam visíveis somente à coordenação.</p>
     ${notice('Só confirme cada matrícula depois de conferir NOME E TURMA com a lista oficial ATUAL da secretaria. A confirmação permite a visualização pela professora autorizada da turma.','info')}
     ${selected.some(repeated)?notice('Há um nome repetido entre turmas nesta lista. Consulte a secretaria antes de confirmar o registro correspondente.','info'):''}
-    ${pending===0&&verified===d.students.length&&verified>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-all>Visualizar e imprimir todos os QR Codes (${verified})</button></div><p class="intro-note">Arquivo de impressão separado por turma. Abre em nova aba apenas neste computador autenticado.</p>`:''}
     <label for="studentClassFilter"><strong>Escolha uma turma para conferir</strong></label>
     <select id="studentClassFilter" style="display:block;width:100%;max-width:360px;padding:10px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">
       <option value="">Selecione uma turma</option>${opts}</select>
@@ -238,7 +247,7 @@ function assessments(d){
     <p class="intro-note">Use a confirmação da turma inteira somente se TODOS os nomes e a turma estiverem corretos na lista oficial atual da secretaria. Se houver dúvida, confirme individualmente.</p>
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
-    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-print-qr-class="${clean(selectedRosterClass)}">Visualizar e imprimir QR Codes (${printableCodes})</button> <button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Preparar atividades LP + Matemática + ficha X (${printableCodes} estudantes)</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
+    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-sticker-qr-class="${clean(selectedRosterClass)}">Etiquetas individuais para colar (${printableCodes})</button> <button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Preparar atividades LP + Matemática + ficha X (${printableCodes} estudantes)</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
     <p class="intro-note">Cada estudante tem três páginas: Língua Portuguesa, Matemática e ficha integrada de X. Somente a ficha de X deve ser digitalizada. A publicação exige leitura, conferência pedagógica e autorização da coordenação.</p></div>`;
 
  } else {
@@ -246,7 +255,7 @@ function assessments(d){
    const rows=activeStudents.map(s=>`<tr><td>${clean(s.display_name)}</td><td>${clean(d.classrooms.find(c=>c.id===s.classroom_id)?.label||'')}</td><td>${d.results.filter(r=>r.student_id===s.id).length}</td></tr>`).join('');
    studentSection=`<div class="card"><h2>Estudantes autorizados</h2>${rows?`<div class="tablewrap"><table><thead><tr><th>Estudante</th><th>Turma</th><th>Avaliações oficiais</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty">Ainda não há estudantes validados e autorizados para este perfil.</div>'}</div>`;
  }
- return `${officialResultsDashboard(d)}<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div>
+ return `${officialResultsDashboard(d)}${standardPrinting}<div class="card"><h2>Ciclos de avaliação</h2><p>Os instrumentos são vinculados à escola e ao ano letivo.</p><div class="tablewrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Tipo</th></tr></thead><tbody>${cycles||'<tr><td colspan="3">Nenhum ciclo visível.</td></tr>'}</tbody></table></div></div>
  ${notice('<strong>Organização pedagógica do fechamento de 2026:</strong> os roteiros abaixo são referências de planejamento para Língua Portuguesa e Matemática. Não constituem lançamentos oficiais nem liberam novos formulários ou envios.','info')}
  <div class="twocol">
    <article class="card"><h2>Língua Portuguesa</h2><p>Instrumento de fechamento — 1º ao 5º ano, com complexidade ajustada à turma.</p><ul class="eyelist">
