@@ -35,13 +35,13 @@ function language(s,c,year,standard=false){
  '<h2>3. LEITURA DE TEXTO DE MEMÓRIA</h2><div class="poem">'+poems.map(x=>'<div>'+esc(x)+'</div>').join("")+'</div>'+
  '<h2>4. LEITURA DE TEXTO NARRATIVO</h2><strong class="storytitle">A LEBRE E A TARTARUGA</strong><div class="story">'+part.story.map(x=>'<p>'+esc(x)+'</p>').join("")+'</div>'+
  '<h2>5. COMPREENSÃO ORAL DO TEXTO</h2>'+part.q.map((q,i)=>'<div class="question">'+(i+1)+'. '+esc(q)+'<div class="write"></div></div>').join("")+
- '<footer>Guarde as produções originais. Para leitura óptica, use apenas a FICHA ÚNICA de X.</footer></section>';
+ '<footer>Guarde as produções originais. Para leitura óptica, use apenas a ficha de correção óptica OMR V2.</footer></section>';
 }
 function mathematics(s,c,year,standard=false){
  return '<section class="page activity">'+header('MATEMÁTICA — '+year+'º ANO',s,c,"MAT-V1",standard)+
  '<div class="instruction">A professora pode ler os enunciados. Resolva do seu jeito; use desenhos ou cálculos.</div>'+
  mat[year].map((q,i)=>'<div class="math-item"><h3>'+(i+1)+'. M'+(i+1)+' · '+esc(q[0])+'</h3><div>'+esc(q[1])+'</div><p class="answer">RESPOSTA / ESTRATÉGIA: ___________________________________________________</p></div>').join("")+
- '<footer>Registro de observação pedagógica, não prova padronizada. A ficha única de X é separada.</footer></section>';
+ '<footer>Registro de observação pedagógica, não prova padronizada. A ficha de correção preenchida é enviada separadamente.</footer></section>';
 }
 const W=595.2755905511812,H=841.8897637795277;
 const rect=(x,y,w,h,fill,stroke)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+(fill||"none")+'" stroke="'+(stroke||"none")+'"/>';
@@ -115,7 +115,7 @@ function printSet(rows,klass){
 
 
 /* Pacotes entregues impressos pela escola. Um QR já integrado por matrícula.
- * Os campos X e a posição original do QR continuam exatamente os mesmos do V5.
+ * Ficha de correção OMR V2, com preenchimento sólido e QR individual.
  */
 function printSchoolPacket(rows,klass,kind="correction"){
  if(!window.qrcode)throw new Error("A biblioteca de QR Code não carregou.");
@@ -174,7 +174,7 @@ function printGuide(grade){
  '<h2>Gabarito orientador de Matemática</h2><table><thead><tr><th>Indicador</th><th>Resposta esperada</th></tr></thead><tbody>'+
  keys[grade].map((v,i)=>'<tr><td>M'+(i+1)+'</td><td>'+esc(v)+'</td></tr>').join("")+'</tbody></table>'+
  '<h2>Marcação na ficha única</h2><p>Escrita: marque uma hipótese. Leitura: marque as habilidades observadas. Texto de memória e narrativa: uma opção por linha; registre apoio e autonomia nas observações complementares. Matemática: A = sozinho; P = parcial/com ajuda; N = não demonstrou; NO = não observado.</p>'+
- '<p><b>Importante:</b> o registro é resultado da interpretação pedagógica da professora. Para o leitor V5, digitalize somente a ficha única de X, nunca as páginas de atividades. O código do QR identifica a ficha sem conter nome ou CPF.</p>'+
+ '<p><b>Importante:</b> o registro é resultado da interpretação pedagógica da professora. Para o leitor OMR V2, pinte totalmente os quadradinhos e digitalize somente a ficha de correção, nunca as páginas de atividades. O código do QR identifica a ficha sem conter nome ou CPF.</p>'+
  '<p><b>Comparabilidade:</b> os indicadores M1–M7 são comuns, mas a complexidade varia conforme o ano. Não comparar acertos de anos diferentes como se fossem notas equivalentes.</p>'+
  '</section>';
  const cssGuide='@page{size:A4;margin:16mm}body{font-family:Arial,sans-serif;color:#20382f;font-size:12px;line-height:1.5}h1{font-size:19px;border-bottom:3px solid #b59d65;padding-bottom:10px}h2{font-size:14px;background:#edf4ef;margin-top:18px;padding:6px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{padding:7px;border:1px solid #b9cbbf;text-align:left}th{background:#edf4ef}.toolbar{margin-bottom:15px}.toolbar button{background:#173e33;border:0;border-radius:5px;padding:10px 15px;color:white;cursor:pointer}@media print{.toolbar{display:none}}';
@@ -192,7 +192,7 @@ function printTestSheet(){
    const student={id:'TESTE-FICTICIO',display_name:'ESTUDANTE FICTÍCIO — NÃO É MATRÍCULA',classroom_id:'TURMA-TESTE',active:true,local_reference:'SON-26-ABCDEF123456'};
    const klass={id:'TURMA-TESTE',label:'1º A (TESTE)'};
    const page=markingOMR(student,klass,true);
-   const documentHtml='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina | Ficha fictícia para testar QR + X</title><style>'+css+'</style></head><body><div class="toolbar"><button type="button" onclick="window.print()">Imprimir ou salvar em PDF</button><span>1 página A4 • FICHA FICTÍCIA • 15 quadradinhos marcados em X • não cadastrar como avaliação real</span></div>'+page+'</body></html>';
+   const documentHtml='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina | Ficha fictícia de preenchimento OMR V2</title><style>'+css+'</style></head><body><div class="toolbar"><button type="button" onclick="window.print()">Imprimir ou salvar em PDF</button><span>1 página A4 • FICHA FICTÍCIA • 15 quadradinhos pintados por inteiro • não cadastrar como avaliação real</span></div>'+page+'</body></html>';
    popup.document.open();popup.document.write(documentHtml);popup.document.close();popup.focus();
  }catch(err){popup.close();throw err;}
 }
