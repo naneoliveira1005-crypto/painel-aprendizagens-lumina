@@ -122,7 +122,7 @@ function printStandardSheet(grade,kind="integrated"){
  grade=standardGrade(grade);
  if(!["integrated","activities"].includes(kind))throw new Error("Modelo não disponível.");
  const s={display_name:"____________________________________",local_reference:"",active:true};
- const c={id:"MODELO",label:grade+"º ANO  /  TURMA: _____"};
+ const c={id:"MODELO",label:grade+"º ANO  /  _____"};
  const pages=kind==="integrated"?marking(s,c,false,true):language(s,c,grade,true)+mathematics(s,c,grade,true);
  const popup=window.open("","_blank");
  if(!popup)throw new Error("Autorize a abertura de novas abas para imprimir.");
