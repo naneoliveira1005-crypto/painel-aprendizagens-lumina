@@ -234,7 +234,7 @@ function assessments(d){
    const tableRows=selected.map((s,i)=>{
     const duplicate=repeated(s);
     const status=duplicate?'<span class="chip warn">Nome em duas turmas</span>':s.active?'<span class="chip">Conferido</span>':'<span class="chip warn">A conferir</span>';
-    const action=duplicate?'<span class="intro-note">Aguardar secretaria</span>':`<button class="smallbtn" type="button" data-verify-student="${clean(s.id)}" data-next-active="${s.active?'false':'true'}">${s.active?'Reabrir conferência':'Confirmar matrícula'}</button> ${s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')?`<button class="smallbtn" type="button" data-ficha-student="${clean(s.id)}">Ver fichas</button>`:''}`;
+    const action=duplicate?'<span class="intro-note">Aguardar secretaria</span>':`<button class="smallbtn" type="button" data-verify-student="${clean(s.id)}" data-next-active="${s.active?'false':'true'}">${s.active?'Reabrir conferência':'Confirmar matrícula'}</button>`;
     return `<tr><td>${i+1}</td><td>${clean(s.display_name)}</td><td>${status}</td><td>${action}</td></tr>`;
    }).join('');
    studentSection=`<div class="card"><h2>Pré-cadastro de estudantes — 2026</h2>
@@ -329,17 +329,6 @@ async function updateStudentReview(studentId,nextActive,button){
 
 
 
-function openFichas(classroomId,studentId){
- if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- const c=loaded.classrooms.find(x=>x.id===classroomId);
- const candidates=loaded.students.filter(s=>s.classroom_id===classroomId && s.active && /^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
- const students=(studentId?candidates.filter(s=>s.id===studentId):candidates.filter(s=>!loaded.results.some(r=>r.student_id===s.id)).slice(0,1));
- if(!c||!students.length){rosterReviewMessage='Não há estudantes confirmados com QR válido para preparar estas fichas.';render();return;}
- if(!window.LuminaFichas?.printSet){rosterReviewMessage='As fichas ainda não carregaram. Atualize o navegador e tente novamente.';render();return;}
- try{window.LuminaFichas.printSet(students,c)}
- catch(err){console.warn('Falha ao preparar fichas de avaliação',err?.message);rosterReviewMessage='Não foi possível abrir as fichas: '+String(err?.message||'erro de impressão');render();}
-}
-
 function printSchoolReadyPacket(kind){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
  const classId=$('schoolPacketClassSelect')?.value||'';
@@ -363,136 +352,6 @@ function printSchoolReadyPacket(kind){
   window.alert('Não foi possível preparar o material: '+String(error?.message||'erro de impressão'));
  }
 }
-function printQrStickersForClass(classroomId){
- if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- const klass=loaded.classrooms.find(c=>c.id===classroomId);
- const students=loaded.students.filter(x=>x.classroom_id===classroomId&&x.active&&/^SON-26-[A-F0-9]{12}$/.test(x.local_reference||''));
- if(!klass||!students.length){rosterReviewMessage='Selecione uma turma com matrículas confirmadas.';render();return;}
- try{
-  if(!window.LuminaFichas?.printQrLabels)throw new Error('Atualize a página para carregar as etiquetas.');
-  window.LuminaFichas.printQrLabels(students,klass);
- }catch(err){
-  rosterReviewMessage='Não foi possível preparar etiquetas: '+String(err?.message||'erro de impressão');
-  window.alert(rosterReviewMessage);
- }
-}
-function printStandardForGrade(kind){
- if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- try{
-  const grade=Number($('standardGradeSelect')?.value||0);
-  if(!window.LuminaFichas?.printStandardSheet)throw new Error('Atualize a página para carregar os modelos.');
-  window.LuminaFichas.printStandardSheet(grade,kind);
- }catch(err){
-  window.alert('Não foi possível preparar o modelo: '+String(err?.message||'erro de impressão'));
- }
-}
-
-function printAllQrCodes(){
- if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- const students=loaded.students;
- if(!students.length||students.some(s=>!s.active||!/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''))){
-  rosterReviewMessage='A impressão geral só pode ser feita quando todas as matrículas estiverem confirmadas e com códigos válidos.';render();return;
- }
- if(typeof window.qrcode!=='function'){rosterReviewMessage='O gerador QR não carregou. Atualize o painel e tente novamente.';render();return;}
- const popup=window.open('','_blank');
- if(!popup){rosterReviewMessage='O navegador bloqueou a nova aba. Autorize pop-ups para o Painel da Lumina.';render();return;}
- popup.opener=null;
- try{
-  let count=0;
-  const classes=loaded.classrooms.slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
-  const pages=classes.map(c=>{
-   const classStudents=students.filter(s=>s.classroom_id===c.id)
-        .sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
-   if(!classStudents.length)return '';
-   const labels=classStudents.map(s=>{
-    const qr=window.qrcode(0,'M');
-    qr.addData(`SONIA26|${s.local_reference}|FICHA-V1`,'Byte');
-    qr.make(); count++;
-    return `<article class="label"><div class="label-title">${clean(c.label)} · 2026</div><div class="student-name">${clean(s.display_name)}</div><div class="qr">${qr.createSvgTag({cellSize:4,margin:16,scalable:true})}</div><div class="code">${clean(s.local_reference)}</div></article>`;
-   }).join('');
-   return `<section class="class-section">
-    <header class="class-header"><h2>Turma ${clean(c.label)}</h2><p>${classStudents.length} estudantes • 2026</p></header>
-    <div class="sheet">${labels}</div></section>`;
-  }).join('');
-  if(count!==students.length)throw new Error('Divergência entre estudantes e turmas. A impressão foi cancelada.');
-  const doc=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
-   <title>Lumina • QR Codes das 16 turmas • 2026</title>
-   <style>
-    @page{size:A4;margin:10mm}*{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;color:#163e32;background:#fff;margin:10mm}
-    .controls{margin:0 0 12mm;display:flex;gap:8px;align-items:center}
-    .controls button{background:#163e32;color:white;border:0;padding:10px 18px;border-radius:6px;cursor:pointer}
-    .controls p{font-size:11px;color:#485e54}
-    .class-section{break-before:page;page-break-before:always}
-    .class-section:first-of-type{break-before:auto;page-break-before:auto}
-    .class-header{border-bottom:2px solid #b49a58;display:flex;justify-content:space-between;align-items:end;gap:8px;margin-bottom:5mm;padding-bottom:3mm}
-    .class-header h2{font-size:18px;margin:0}.class-header p{font-size:12px;margin:0}
-    .sheet{display:grid;grid-template-columns:repeat(2,1fr);gap:5mm}
-    .label{border:1px dashed #a6b1aa;border-radius:5px;padding:4mm 3mm;text-align:center;break-inside:avoid;page-break-inside:avoid;height:76mm;display:flex;flex-direction:column;align-items:center}
-    .label-title{font-size:11px;color:#415e52;font-weight:700}
-    .student-name{font-size:12px;font-weight:700;margin:3mm 0;min-height:9mm}
-    .qr{width:44mm;height:44mm;margin:auto;display:flex;align-items:center;justify-content:center}
-    .qr svg{width:100%;height:100%}
-    .code{font-family:monospace;font-size:11px;letter-spacing:.3px;margin-top:3mm;color:#273a32}
-    @media print{.controls{display:none}body{margin:0}}
-   </style></head><body>
-   <div class="controls"><button type="button" onclick="window.print()">Imprimir ou salvar em PDF</button>
-    <p>Uso interno. ${count} QR Codes divididos por turma. Os símbolos codificam apenas identificadores.</p></div>
-   ${pages}</body></html>`;
-  popup.document.open();popup.document.write(doc);popup.document.close();popup.focus();
- }catch(err){
-  popup.close();console.warn('Falha ao montar etiquetas',err?.message);
-  rosterReviewMessage='Falha ao preparar a impressão geral. Nenhum cadastro foi alterado. Use impressão por turma ou atualize o painel.';render();
- }
-}
-
-function printQrCodes(classroomId){
- if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- const klass=loaded.classrooms.find(c=>c.id===classroomId);
- const list=loaded.students.filter(s=>s.classroom_id===classroomId&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''))
-  .sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
- if(!klass||!list.length){rosterReviewMessage='Nenhum QR Code de matrícula confirmada nesta turma.';render();return;}
- if(typeof window.qrcode!=='function'){rosterReviewMessage='O gerador QR não carregou. Atualize a página e tente novamente.';render();return;}
- // Tudo é montado localmente no navegador autorizado, sem serviço externo de QR.
- let labels;
- try{
-  labels=list.map(s=>{
-   const qr=window.qrcode(0,'M');
-   qr.addData(`SONIA26|${s.local_reference}|FICHA-V1`,'Byte');
-   qr.make();
-   return `<article class="label"><div class="label-title">${clean(klass.label)} · 2026</div><div class="student-name">${clean(s.display_name)}</div><div class="qr">${qr.createSvgTag({cellSize:5,margin:20,scalable:true})}</div><div class="code">${clean(s.local_reference)}</div></article>`;
-  }).join('');
- }catch(err){console.warn('Falha ao gerar QR local',err?.message);rosterReviewMessage='Não foi possível gerar as etiquetas. Atualize a página.';render();return;}
- const popup=window.open('','_blank');
- if(!popup){rosterReviewMessage='O navegador bloqueou a nova aba. Autorize pop-ups para este site.';render();return;}
- popup.opener=null;
- const doc=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Lumina • QR Codes ${clean(klass.label)}</title>
- <style>@page{size:A4;margin:10mm}*{box-sizing:border-box}
- body{font-family:Arial,Helvetica,sans-serif;color:#163e32;background:#fff;margin:10mm}
- .header{margin-bottom:9mm;border-bottom:2px solid #b9a061;padding-bottom:4mm}
- h1{font-size:18px;margin:0 0 4px}.note{font-size:11px;color:#56645c;margin:5px 0}
- .sheet{display:grid;grid-template-columns:repeat(2,1fr);gap:5mm}
- .label{border:1px dashed #a6b1aa;border-radius:5px;padding:5mm 3mm;text-align:center;break-inside:avoid;height:76mm;display:flex;flex-direction:column;align-items:center}
- .label-title{font-size:11px;color:#415e52;font-weight:700}
- .student-name{font-size:12px;font-weight:700;margin:3mm 0;min-height:9mm}
- .qr{width:44mm;height:44mm;margin:auto;display:flex;align-items:center;justify-content:center}
- .qr svg{width:100%;height:100%}
- .code{font-family:monospace;font-size:11px;letter-spacing:.3px;margin-top:3mm;color:#273a32}
- .controls{margin:0 0 15px}.controls button{background:#163e32;border:0;color:white;padding:11px 18px;border-radius:6px;cursor:pointer}
- @media print{.controls{display:none}body{margin:0}}</style></head><body>
- <div class="controls"><button type="button" onclick="window.print()">Imprimir etiquetas</button></div>
- <div class="header"><h1>Lumina | QR Codes da turma ${clean(klass.label)}</h1>
- <p class="note">${list.length} matrícula(s) confirmada(s). Uso interno da escola. Os QR Codes não contêm nomes ou CPF.</p>
- <p class="note">Os códigos identificam fichas para o leitor V5. Não são links de envio de documentos.</p></div>
- <main class="sheet">${labels}</main></body></html>`;
- popup.document.open();
- popup.document.write(doc);
- popup.document.close();
- popup.focus();
-}
-
-
-let pedagogicalReviewMessage='';
 function formatImportedRow(row,view){
  const student=view.students.find(s=>s.id===row.student_id);
  if(!student||!student.active||student.local_reference!==row.qr_code)return '';
@@ -628,7 +487,7 @@ function batches(d){
  const savedPilot=pilotStageMessage?notice(clean(pilotStageMessage),'info'):'';
  const safeReadingNotice=notice('<strong>Modelo único de preenchimento.</strong> Preencha completamente os quadradinhos da ficha com QR individual. Faça o envio em PDF para leitura; os resultados só são publicados depois da conferência. Impressão em massa ainda bloqueada até a validação no site.','info');
  const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
- return `${savedPilot}${safeReadingNotice}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A publicação oficial só é autorizada pela coordenação após confirmar todas as fichas do lote. Dados de teste não devem ser publicados.','info')}
+ return `${savedPilot}${safeReadingNotice}${notice('O leitor de fichas funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A publicação oficial só é autorizada pela coordenação após confirmar todas as fichas do lote. Dados de teste não devem ser publicados.','info')}
  <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste (sem cadastro)</button> <a href="leitor-v5.html?v=20261111-omr-v2-pintado-piloto-v17" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor de fichas →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
  ${admin?`<div class="card"><h2>Histórico de lotes da escola</h2><p>Somente a coordenação acompanha fichas publicadas ou ainda em conferência.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Histórico de fichas desta escola: ${d.importRows.length}; publicadas: ${d.importRows.filter(r=>r.validation_status==='committed').length}; aguardando conferência: ${d.importRows.filter(r=>r.validation_status!=='committed').length}.</p>`:''}</div>`:''}
  ${admin?importedReviewPanel(d):''}
@@ -986,7 +845,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261111-omr-v2-pintado-piloto-v17';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const printOne=e.target.closest('[data-ficha-student]');if(printOne){const s=loaded.students.find(x=>x.id===printOne.dataset.fichaStudent);if(s)openFichas(s.classroom_id,s.id);return;}const schoolPacket=e.target.closest('[data-school-packet]');if(schoolPacket){printSchoolReadyPacket(schoolPacket.dataset.schoolPacket);return;}const stdPrint=e.target.closest('[data-standard-print]');if(stdPrint){printStandardForGrade(stdPrint.dataset.standardPrint);return;}const selectedStickers=e.target.closest('[data-sticker-qr-selected]');if(selectedStickers){printQrStickersForClass($('standardQrClassSelect')?.value||'');return;}const labelPrint=e.target.closest('[data-sticker-qr-class]');if(labelPrint){printQrStickersForClass(labelPrint.dataset.stickerQrClass);return;}const printClass=e.target.closest('[data-ficha-class]');if(printClass){openFichas(printClass.dataset.fichaClass,null);return;}const allQR=e.target.closest('[data-print-qr-all]');if(allQR){printAllQrCodes();return;}const qrPrint=e.target.closest('[data-print-qr-class]');if(qrPrint){printQrCodes(qrPrint.dataset.printQrClass);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261111-omr-v2-pintado-piloto-v17';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const schoolPacket=e.target.closest('[data-school-packet]');if(schoolPacket){printSchoolReadyPacket(schoolPacket.dataset.schoolPacket);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
