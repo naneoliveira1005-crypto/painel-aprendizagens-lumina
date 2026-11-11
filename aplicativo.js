@@ -56,7 +56,7 @@ function render(){
  $('content').innerHTML=pageMarkup;
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
  // Se o salvamento falhar, voltar à aba mantém a conferência na memória da sessão.
- if(currentPage==='lotes'&&mode==='live'&&role==='pedagogical_admin'&&
+ if(currentPage==='lotes'&&mode==='live'&&['pedagogical_admin','teacher'].includes(role)&&
     transferDraft?.ownerId===profile?.user_id&&transferDraft.csv){
   reviewCSV(new File([transferDraft.csv],'lote_recuperado_da_sessao.csv',{type:'text/csv'}));
  }
@@ -512,7 +512,7 @@ async function confirmImportedReview(id,button){
 function batches(d){
  // O envio deve ser a primeira ação na aba de leitura, sem botão escondido.
  const readerUrl='leitor-v5.html?v=20261111-salvamento-confirmado-v19';
- const reader=mode==='live'&&role==='pedagogical_admin'?
+ const reader=mode==='live'&&['pedagogical_admin','teacher'].includes(role)?
   '<div class="card" id="readerTop"><h2>1. Enviar ficha preenchida</h2>'+
   '<div id="stageSavedBanner" class="notice info" role="status">'+
     (pilotStageMessage?clean(pilotStageMessage):
@@ -524,7 +524,20 @@ function batches(d){
   '<iframe id="pilotReaderIframe" title="Envio e leitura de fichas OMR V2" src="'+readerUrl+'" loading="eager" style="width:100%;height:1100px;border:1px solid #d6e5d9;border-radius:10px;background:white" referrerpolicy="same-origin"></iframe>'+
   '<p class="intro-note">Se precisar de mais espaço, <a href="'+readerUrl+'" target="_blank" rel="noopener noreferrer">abra o leitor em uma nova aba</a>. A leitura da ficha não publica dados automaticamente.</p></div>':
   '<div class="card"><h2>Leitura de fichas</h2><p>O envio institucional está disponível somente para a coordenação autorizada.</p></div>';
- if(mode!=='live'||role!=='pedagogical_admin')return reader;
+ if(mode!=='live'||!['pedagogical_admin','teacher'].includes(role))return reader;
+ if(role==='teacher'){
+  const ownBatches=(d.batches||[]).slice().reverse();
+  const rows=ownBatches.map(b=>
+    '<tr><td>'+clean((d.classrooms||[]).find(c=>c.id===b.classroom_id)?.label||'Turma')+
+    '</td><td>'+clean(b.expected_rows||0)+'</td><td>'+chip(b.status)+'</td></tr>').join('');
+  return reader+
+   '<div class="card"><h2>2. Confirmação do envio</h2>'+
+   '<p>Depois de conferir a leitura, clique em <strong>Consolidar fichas válidas</strong> e em <strong>Enviar e salvar lote para conferência</strong>. Aguarde a mensagem <strong>LOTE SALVO</strong>. A coordenação fará a conferência pedagógica e autorizará a publicação.</p>'+
+   '<div id="csvReport" class="report" role="status">Aguardando envio da ficha.</div></div>'+
+   '<div class="card"><h2>Meus lotes recebidos</h2>'+
+   '<div class="tablewrap"><table><thead><tr><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>'+
+    (rows||'<tr><td colspan="3">Nenhum lote enviado.</td></tr>')+'</tbody></table></div></div>';
+ }
  let extras='';
  try{
   const batchList=(d.batches||[]).map(b=>
@@ -551,7 +564,7 @@ function batches(d){
 }
 
 function team(d){
- if(role==='teacher') return `<div class="card"><h2>Minha autorização</h2><p>Você pode consultar as turmas vinculadas ao seu perfil. A coordenação confirma vínculos e altera permissões.</p>${notice('Se alguma turma não aparecer, procure a coordenação pedagógica. Não compartilhe senha nem CPF.','info')}</div>`;
+ if(role==='teacher') return `<div class="card"><h2>Minha área de trabalho</h2><p>Para enviar as fichas da sua turma, abra <strong>Leitura de fichas</strong>. Digitalize em PDF ou fotografe, confira as respostas e aguarde a mensagem <strong>LOTE SALVO</strong>.</p>${notice('A coordenação mantém a conferência pedagógica e a autorização de publicação. Se sua turma não aparecer, solicite a conferência do vínculo.','info')}</div>`;
  if(role==='director')return `<div class="card"><h2>Visão institucional</h2><p>A direção acompanha informações coletivas. A atribuição de turmas e o lançamento de resultados dependem da coordenação.</p>${notice('Os dados individuais das crianças não estão disponíveis neste perfil.','info')}</div>`;
  const rows=d.staff.map(s=>{const turmas=(d.staffLinks||[]).filter(x=>x.staff_id===s.id).map(x=>d.classrooms.find(c=>c.id===x.classroom_id)?.label).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR')).join(', ')||'A definir';return `<tr><td>${clean(s.full_name)}<div class="intro-note">Turmas: ${clean(turmas)}</div></td><td>${clean(plannedName[s.planned_role]||s.planned_role)}</td><td>${s.email?clean(s.email):'<span class="chip warn">Pendente</span>'}</td><td>${chip(s.status)}</td></tr>`;}).join('');
  return `<div class="card"><h2>Pré-cadastro de profissionais</h2><p>A equipe está em conferência. Os nomes e e-mails exibidos dependem da versão aprovada pela escola.</p><div class="tablewrap"><table><thead><tr><th>Profissional</th><th>Função</th><th>E-mail</th><th>Acesso</th></tr></thead><tbody>${rows||'<tr><td colspan="4">O cadastro da equipe ainda não foi liberado.</td></tr>'}</tbody></table></div></div>${notice('<strong>Priscila já tem acesso ativo.</strong> Os convites das professoras e da direção ainda não foram enviados. A ativação exige e-mails confirmados, aprovação dos vínculos e testes com contas reais. CPF não é senha; a futura entrada por CPF precisa de serviço protegido, sem revelar dados pessoais.','info')}`;
@@ -619,24 +632,24 @@ function reviewCSV(file,options={}){
      if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Sessão institucional alterada'});
      return;
    } // Evita expor conferência de sessão anterior.
-   const liveAdmin=mode==='live'&&role==='pedagogical_admin'&&!!profile;
-   const students=liveAdmin?loaded.students:[];
-   if(liveAdmin&&(!students.length||!loaded.classrooms.length)){
+   const liveAuthorized=mode==='live'&&['pedagogical_admin','teacher'].includes(role)&&!!profile;
+   const students=liveAuthorized?loaded.students:[];
+   if(liveAuthorized&&(!students.length||!loaded.classrooms.length)){
      area.textContent='Não foi possível conferir o cadastro protegido. O lote NÃO FOI SALVO. Clique em Atualizar e tente novamente.';
      if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Cadastro institucional não disponível'});
      return;
    }
    try{
-     const outcome=checkReaderCSV(String(reader.result||''),students,liveAdmin?loaded.classrooms:[],liveAdmin);
+     const outcome=checkReaderCSV(String(reader.result||''),students,liveAuthorized?loaded.classrooms:[],liveAuthorized);
      const {tallies,rows}=outcome;
      area.replaceChildren();
      const heading=document.createElement('p');heading.style.fontWeight='700';
-     heading.textContent=liveAdmin?'Conferência QR × matrícula (acesso da coordenação)':'Conferência do formato do CSV (demonstração/sem vínculo)';
+     heading.textContent=liveAuthorized?'Conferência QR × matrícula (acesso autorizado)':'Conferência do formato do CSV (demonstração/sem vínculo)';
      area.appendChild(heading);
      const stats=document.createElement('p');
-     stats.textContent='Fichas examinadas: '+tallies.total+' | '+(liveAdmin?'Correspondências válidas: ':'Formato válido: ')+tallies.ready+' | Para revisar: '+tallies.review+' | Códigos repetidos: '+tallies.repeated;
+     stats.textContent='Fichas examinadas: '+tallies.total+' | '+(liveAuthorized?'Correspondências válidas: ':'Formato válido: ')+tallies.ready+' | Para revisar: '+tallies.review+' | Códigos repetidos: '+tallies.repeated;
      area.appendChild(stats);
-     if(liveAdmin){
+     if(liveAuthorized){
        const banner=document.createElement('p');
        banner.textContent='O cruzamento usa as matrículas autorizadas do banco. O lote só é considerado salvo após confirmação de gravação. Nenhuma avaliação é publicada automaticamente. “Apta” significa apenas que QR e campos técnicos foram encontrados: a professora ainda deve validar o conteúdo pedagógico.';
        area.appendChild(banner);
@@ -653,7 +666,7 @@ function reviewCSV(file,options={}){
        const body=document.createElement('tbody');
        for(const item of shown){
          const row=document.createElement('tr');
-         for(const value of [item.code||'—',liveAdmin?item.classroom:'—',liveAdmin?item.name:'—',item.status]){
+         for(const value of [item.code||'—',liveAuthorized?item.classroom:'—',liveAuthorized?item.name:'—',item.status]){
            const cell=document.createElement('td');cell.textContent=value;row.appendChild(cell);
          }
          body.appendChild(row);
@@ -662,7 +675,7 @@ function reviewCSV(file,options={}){
        if(subset.length>shown.length){const note=document.createElement('p');note.textContent='Exibindo as primeiras '+shown.length+' pendências. Divida o lote e reconfira as demais.';area.appendChild(note);}
      }
      const footer=document.createElement('p');footer.textContent='Esta conferência inicial é local. O registro provisório não substitui a validação pedagógica nem armazena as fotografias originais.';area.appendChild(footer);
-     if(liveAdmin){
+     if(liveAuthorized){
        const activeCycle=loaded.cycles.find(c=>c.school_year===2026&&c.status==='draft');
        const classroomByCode=new Map(students.map(s=>[String(s.local_reference||'').toUpperCase(),s.classroom_id]));
        const classes=new Set(rows.filter(r=>r.ok).map(r=>classroomByCode.get(r.code)));
@@ -738,7 +751,7 @@ function notifyPilotTransfer(target,payload){
  }catch(error){console.warn('A janela do leitor já foi fechada.',error?.message);}
 }
 async function stagePilotCSV(button,area,options={}){
- if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api||!pilotCandidate)return;
+ if(mode!=='live'||!['pedagogical_admin','teacher'].includes(role)||!profile||!api||!pilotCandidate)return;
  const candidate=pilotCandidate;
  if(candidate.ownerId!==profile.user_id)return;
  if(!options.skipConfirmation&&!window.confirm('Salvar este lote em área protegida para conferência pedagógica? Nenhum resultado oficial será publicado e nenhuma foto será enviada.'))return;
@@ -801,7 +814,7 @@ function readerRowsToCSV(rows){
  return '\uFEFF'+lines.join('\r\n');
 }
 window.addEventListener('message',event=>{
- if(event.origin!==window.location.origin||mode!=='live'||role!=='pedagogical_admin'||currentPage!=='lotes')return;
+ if(event.origin!==window.location.origin||mode!=='live'||!['pedagogical_admin','teacher'].includes(role)||currentPage!=='lotes')return;
  const frame=$('pilotReaderIframe');
  if(!frame||event.source!==frame.contentWindow||event.data?.type!=='lumina:reader-pilot:v1')return;
  try{
@@ -867,8 +880,8 @@ async function refreshLive(options={}){
    profile.role==='director'?Promise.resolve([]):get('assessment_results','student_id,cycle_id,answers','none'),
    profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
-   profile.role==='pedagogical_admin'?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
-   profile.role==='pedagogical_admin'?get('assessment_import_rows','id,batch_id,validation_status,student_id,qr_code,answers,validation_note','none'):Promise.resolve([])
+   ['pedagogical_admin','teacher'].includes(profile.role)?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
+   ['pedagogical_admin','teacher'].includes(profile.role)?get('assessment_import_rows','id,batch_id,validation_status,student_id,qr_code,answers,validation_note','none'):Promise.resolve([])
  ]);
  if(mode!=='live'||profile?.user_id!==currentUser)return;
  const [classrooms,cycles,students,official,staff,staffLinks,batches,importRows]=results;
