@@ -216,19 +216,27 @@ function officialResultsDashboard(d){
 function assessments(d){
  const packetClasses=d.classrooms.filter(c=>d.students.some(s=>s.classroom_id===c.id&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')))
    .slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+ const initialPacketClass=packetClasses.find(c=>c.label==='3º B')||packetClasses[0];
  const packetOptions=packetClasses.map(c=>{
   const n=d.students.filter(s=>s.classroom_id===c.id&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')).length;
-  return '<option value="'+clean(c.id)+'"'+(c.label==='3º B'?' selected':'')+'>'+clean(c.label)+' — '+n+' estudantes</option>';
+  return '<option value="'+clean(c.id)+'"'+(c.id===initialPacketClass?.id?' selected':'')+'>'+clean(c.label)+' — '+n+' estudantes</option>';
  }).join('');
+ const alreadyPublished=new Set(d.results.map(r=>r.student_id));
+ const packetStudentOptions=d.students.filter(s=>s.classroom_id===initialPacketClass?.id&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')&&!alreadyPublished.has(s.id))
+  .sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'))
+  .map(s=>'<option value="'+clean(s.id)+'">'+clean(s.display_name)+'</option>').join('');
  const standardPrinting=mode==='live'&&role==='pedagogical_admin'?
   '<div class="card"><h2>Fichas de correção — modelo único OMR V2</h2>'+
   '<p><strong>A escola imprime e entrega prontas.</strong> A professora preenche completamente os quadradinhos, digitaliza pelo Drive e envia o PDF ao painel. Não precisa cadastrar novamente os estudantes.</p>'+
   '<label for="schoolPacketClassSelect"><strong>Turma</strong></label>'+
   '<select id="schoolPacketClassSelect" style="display:block;width:100%;max-width:360px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+packetOptions+'</select>'+
-  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-school-packet="pilot" '+(packetClasses.length?'':'disabled')+'>Imprimir 5 fichas para validação</button>'+
+  '<label for="schoolPacketStudentSelect" style="display:block;margin-top:12px"><strong>Estudante — para impressão individual</strong></label>'+
+  '<select id="schoolPacketStudentSelect" style="display:block;width:100%;max-width:420px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+
+    (packetStudentOptions||'<option value="">Nenhum estudante disponível</option>')+'</select>'+
+  '<div class="buttonrow"><button type="button" class="smallbtn solid" data-school-packet="individual" '+(packetClasses.length?'':'disabled')+'>Imprimir ficha individual do estudante</button>'+
   '<button type="button" class="smallbtn" data-school-packet="correction" '+(packetClasses.length?'':'disabled')+'>Imprimir todas as fichas de correção da turma</button>'+
   '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa da turma</button></div>'+
-  '<p class="intro-note"><strong>Um único modelo OMR V2:</strong> QR individual, nome, turma e quadradinhos para pintar. A escola imprime; a professora só preenche, digitaliza e envia. Primeiro confira a leitura das cinco fichas de validação antes de usar o restante. Imprima em A4, tamanho real (100%).</p>'+
+  '<p class="intro-note"><strong>Modelo único OMR V2:</strong> nome, turma e QR individual já impressos. Pinte o quadradinho, digitalize em PDF ou foto e confira o resultado. Impressão A4, escala real (100%).</p>'+
   '<label style="display:flex;align-items:center;gap:8px;margin:14px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked> Excluir estudantes que já têm avaliação oficial</label>'+
   '</div>':'';
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
@@ -346,9 +354,30 @@ async function updateStudentReview(studentId,nextActive,button){
 
 
 
+function updatePacketStudents(){
+ const klassId=$('schoolPacketClassSelect')?.value;
+ const select=$('schoolPacketStudentSelect');
+ if(!select||!klassId||mode!=='live'||role!=='pedagogical_admin')return;
+ const excludePublished=$('skipPublishedSchoolPacket')?.checked!==false;
+ const published=new Set(loaded.results.map(r=>r.student_id));
+ const students=loaded.students.filter(s=>s.classroom_id===klassId&&s.active&&
+    /^SON-26-[A-F0-9]{12}$/.test(s.local_reference||'')&&
+    (!excludePublished||!published.has(s.id))).sort((a,b)=>a.display_name.localeCompare(b.display_name,'pt-BR'));
+ const oldId=select.value;
+ select.replaceChildren();
+ if(!students.length){
+  const opt=document.createElement('option');opt.value='';opt.textContent='Nenhum estudante disponível';
+  select.append(opt);return;
+ }
+ for(const s of students){
+  const opt=document.createElement('option');opt.value=s.id;opt.textContent=s.display_name;
+  select.append(opt);
+ }
+ if(students.some(s=>s.id===oldId))select.value=oldId;
+}
 function printSchoolReadyPacket(kind){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- if(!['pilot','correction','full'].includes(kind))return;
+ if(!['individual','correction','full'].includes(kind))return;
  const classId=$('schoolPacketClassSelect')?.value||'';
  const klass=loaded.classrooms.find(c=>c.id===classId);
  const students=loaded.students.filter(s=>s.classroom_id===classId&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
@@ -359,17 +388,18 @@ function printSchoolReadyPacket(kind){
   const onlyPending=$('skipPublishedSchoolPacket')?.checked!==false;
   const eligible=onlyPending?students.filter(s=>!published.has(s.id)):students;
   if(!eligible.length){window.alert('Nenhum estudante elegível nesta turma. Desmarque o filtro para reimprimir.');return;}
-  // Para validação, escolher fichas diferentes das já gravadas como piloto.
-  const previouslyTested=new Set(loaded.importRows.filter(r=>
-    ['awaiting_pedagogical_review','ready_for_commit','committed'].includes(r.validation_status)
-  ).map(r=>r.student_id));
-  const chosen=kind==='pilot'?eligible.filter(s=>!previouslyTested.has(s.id)).slice(0,5):eligible;
-  if(!chosen.length){window.alert('Não há novas fichas disponíveis para validação nesta turma.');return;}
+  let chosen=eligible;
+  if(kind==='individual'){
+   const studentId=$('schoolPacketStudentSelect')?.value||'';
+   const student=eligible.find(s=>s.id===studentId);
+   if(!student){window.alert('Selecione o estudante correto para imprimir a ficha individual.');return;}
+   chosen=[student];
+  }
   const pages=chosen.length*(kind==='full'?3:1);
-  if(kind!=='pilot'){
+  if(kind!=='individual'){
    const label=kind==='full'?'avaliação completa':'fichas de correção';
    if(!window.confirm('Preparar '+pages+' página(s) A4 de '+label+' para '+chosen.length+
-     ' estudantes do '+klass.label+'? O arquivo será aberto para impressão ou PDF. Antes de distribuir, confira o resultado das cinco fichas de validação.'))return;
+    ' estudantes do '+klass.label+'? Faça a conferência dos resultados digitalizados antes de publicar os dados.'))return;
   }
   const result=window.LuminaFichas.printSchoolPacket(chosen,klass,kind==='full'?'full':'correction');
   if(Number(result.students)!==chosen.length||Number(result.pages)!==pages)
@@ -908,6 +938,10 @@ function showPasswordSetup(){
   showAuthPanel('setup');
 }
 function bind(){
+ document.addEventListener('change',e=>{
+ if(e.target?.id==='schoolPacketClassSelect'||e.target?.id==='skipPublishedSchoolPacket')
+  updatePacketStudents();
+});
  $('loginForm').addEventListener('submit',async(e)=>{e.preventDefault();const btn=$('btnLogin'),msg=$('loginMessage');btn.disabled=true;msg.textContent='Verificando credenciais...';try{
   if(!api)throw new Error('Serviço temporariamente indisponível. Abra este arquivo com conexão à internet.');
   const email=$('email').value.trim(),password=$('password').value;
