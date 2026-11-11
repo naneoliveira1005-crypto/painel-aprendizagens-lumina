@@ -46,52 +46,7 @@ function mathematics(s,c,year,standard=false){
 const W=595.2755905511812,H=841.8897637795277;
 const rect=(x,y,w,h,fill,stroke)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+(fill||"none")+'" stroke="'+(stroke||"none")+'"/>';
 const txt=(x,y,t,size,weight,color)=>'<text x="'+x+'" y="'+y+'" font-family="Arial,Helvetica,sans-serif" font-size="'+(size||9.5)+'" font-weight="'+(weight||"normal")+'" fill="'+(color||"#23342e")+'">'+esc(t)+'</text>';
-const mark=(x,y,t,tx,filled=false)=>rect(x,y,10,10,"white","#0e2018")+(filled?'<path d="M '+(x+2)+' '+(y+2)+' L '+(x+8)+' '+(y+8)+' M '+(x+8)+' '+(y+2)+' L '+(x+2)+' '+(y+8)+'" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>':'')+txt(tx??x+14,y+9,t,9.6);
-function marking(s,c,test=false,standard=false){
- const o=[];
- const testPositions=new Set(['320:191','40:255','40:273','40:291','320:255','320:273','245:360','245:380','350:445','405:464','350:483','460:502','350:521','350:540','405:559']);
- const box=(x,y,label)=>mark(x,y,label,undefined,test&&testPositions.has(x+':'+y));
- const band=(y,title)=>{o.push(rect(33,y,528,17,"#e8f1ed"));o.push(txt(41,y+12,title,10,"bold","#20483a"));};
- o.push(rect(0,0,W,82,"#173e33"));
- o.push(txt(34,32,"FICHA DIAGNÓSTICA INTEGRADA",17,"bold","white"));
- o.push(txt(34,52,standard?("LÍNGUA PORTUGUESA + MATEMÁTICA | "+c.label+" | 2026"):"LÍNGUA PORTUGUESA + MATEMÁTICA | 2026",11,"normal","white"));
- o.push(rect(474,26,105,106,"white"));
- if(standard){
-   // Mesmo espaço e geometria do QR das fichas já validadas.
-   o.push(rect(474,26,105,123,"white","#567a69"));
-   o.push(txt(489,82,"COLE AQUI",10,"bold","#345d4b"));
-   o.push(txt(485,99,"ETIQUETA QR",9,"normal","#345d4b"));
- }else{
-   o.push(QR(s.local_reference,"FICHA-V1").replace(/<svg /,'<svg x="478" y="30" width="96" height="96" '));
- }
- o.push(txt(34,111,"ESCOLA: "+SCHOOL,9));
- o.push(txt(34,128,"ESTUDANTE: "+s.display_name,10,"bold"));
- o.push(txt(34,145,"TURMA: "+c.label+"     DATA: ____/____/2026",10));
- if(!standard)o.push(txt(475,143,s.local_reference,8,"bold","#325343"));
- band(152,"A. HIPÓTESE DE ESCRITA — MARQUE UMA");
- [["Pré-silábica",40,173],["Silábica sem valor",40,191],["Silábica com valor",40,209],["Silábico-alfabética",320,173],["Alfabética",320,191]].forEach(x=>o.push(box(x[1],x[2],x[0])));
- band(233,"B. LEITURA — MARQUE X NAS HABILIDADES OBSERVADAS");
- [["Reconhece letras",40,255],["Lê letras isoladas",40,273],["Lê sílabas simples",40,291],["Lê sílabas complexas",40,309],["Lê palavras",320,255],["Lê frases simples",320,273],["Lê frases complexas",320,291]].forEach(x=>o.push(box(x[1],x[2],x[0])));
- band(335,"C. LEITURA DE TEXTOS — UMA OPÇÃO POR LINHA");
- o.push(txt(40,369,"Texto de memória",10));o.push(txt(40,389,"Texto narrativo",10));
- [["Lê",245,360],["Recita",340,360],["Não lê",445,360],["Fluente",245,380],["Sem fluência",340,380],["Não lê",445,380]].forEach(x=>o.push(box(x[1],x[2],x[0])));
- band(408,"D. MATEMÁTICA — UMA OPÇÃO POR INDICADOR");
- o.push(txt(40,438,"A=sozinho | P=parcial/ajuda | N=não demonstrou | NO=não observado",9));
- const labs=["Contagem e quantificação","Leitura e escrita de números","Sistema decimal","Adição e subtração","Grupos iguais e repartição","Sequências e regularidades","Leitura de dados"];
- labs.forEach((lab,i)=>{const y=445+i*19;o.push(txt(40,y+9,"M"+(i+1)+" "+lab,9.6));[["A",350],["P",405],["N",460],["NO",515]].forEach(v=>o.push(box(v[1],y,v[0])))});
- band(594,"OBSERVAÇÕES PEDAGÓGICAS COMPLEMENTARES — MANUAIS");
- o.push(txt(40,634,"Memória: leitura com apoio/autonomia e fluência:",9.8));
- o.push(rect(40,642,510,1,"#afc1b6"));
- o.push(txt(40,667,"Narrativa: leitura com apoio/autonomia e fluência:",9.8));
- o.push(rect(40,675,510,1,"#afc1b6"));
- o.push(txt(40,700,"Compreensão: autônoma/com mediação/não demonstrada:",9.8));
- o.push(rect(40,708,510,1,"#afc1b6"));
- o.push(txt(40,738,"Observações adicionais:",9.8));
- o.push(rect(40,745,510,1,"#afc1b6"));o.push(rect(40,773,510,1,"#afc1b6"));
- o.push(txt(34,806,"Marque X dentro do quadrado, sem pintar o fundo. A câmera lê apenas QR e X.",8.2,"normal","#596b61"));
- if(test)o.push(txt(34,831,"FICHA FICTÍCIA DE TESTE. NÃO REGISTRAR NO PAINEL.",8.4,"bold","#a13434"));
- return '<section class="page marking"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="100%">'+o.join("")+'</svg></section>';
-}const markOMR=(x,y,t,filled=false)=>rect(x,y,12,12,"white","#102018")+
+const markOMR=(x,y,t,filled=false)=>rect(x,y,12,12,"white","#102018")+
  (filled?rect(x+1.5,y+1.5,9,9,"#101713"):'')+txt(x+16,y+10,t,9.6);
 
 function markingOMR(s,c,test=false){
@@ -104,7 +59,8 @@ function markingOMR(s,c,test=false){
  o.push(txt(34,52,"LÍNGUA PORTUGUESA + MATEMÁTICA | 2026 • OMR V2",11,"normal","white"));
  o.push(rect(474,26,105,106,"white"));
  o.push(QR(s.local_reference,"FICHA-V2").replace(/<svg /,'<svg x="478" y="30" width="96" height="96" '));
- o.push(txt(34,111,"ESCOLA: "+SCHOOL,9));
+ // Mantém o nome da escola afastado do primeiro marco de referência.
+ o.push(txt(59,111,"ESCOLA: "+SCHOOL,9));
  o.push(txt(34,128,"ESTUDANTE: "+s.display_name,10,"bold"));
  o.push(txt(34,145,"TURMA: "+c.label+"     DATA: ____/____/2026",10));
  o.push(txt(475,143,s.local_reference,8,"bold","#325343"));
@@ -197,78 +153,6 @@ function printSchoolPacket(rows,klass,kind="correction"){
  }catch(error){popup.close();throw error;}
 }
 
-/* Impressão padronizada e QR individual, compatíveis com FICHA-V1. */
-function standardGrade(grade){
- const y=Number(grade);
- if(!Number.isInteger(y)||y<1||y>5||!lp[y]||!mat[y])throw new Error("Selecione um ano do 1º ao 5º.");
- return y;
-}
-function printStandardSheet(grade,kind="integrated"){
- grade=standardGrade(grade);
- if(!["integrated","activities"].includes(kind))throw new Error("Modelo não disponível.");
- const s={display_name:"____________________________________",local_reference:"",active:true};
- const c={id:"MODELO",label:grade+"º ANO  /  _____"};
- const pages=kind==="integrated"?marking(s,c,false,true):language(s,c,grade,true)+mathematics(s,c,grade,true);
- const popup=window.open("","_blank");
- if(!popup)throw new Error("Autorize a abertura de novas abas para imprimir.");
- popup.opener=null;
- try{
-  const label=kind==="integrated"?"Ficha integrada de X, padrão do "+grade+"º ano, com espaço para QR individual":"Atividades padronizadas de LP e Matemática — "+grade+"º ano";
-  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina · '+esc(label)+'</title><style>'+css+'</style></head><body>'+
-    '<div class="toolbar"><button onclick="window.print()">Imprimir / salvar em PDF</button><span>'+esc(label)+' · A4, tamanho real / 100%. Imprima quantas cópias precisar.</span></div>'+
-    pages+'</body></html>';
-  popup.document.open();popup.document.write(html);popup.document.close();popup.focus();
-  return {grade,pages:kind==="integrated"?1:2};
- }catch(e){popup.close();throw e;}
-}
-function printQrLabels(students,klass){
- if(typeof window.qrcode!=="function")throw new Error("Gerador de QR Code indisponível.");
- if(!Array.isArray(students)||!students.length||!klass?.id)throw new Error("Selecione uma turma.");
- const grade=standardGrade((klass.label||"").match(/^[1-5]/)?.[0]);
- const sorted=students.slice().sort((a,b)=>a.display_name.localeCompare(b.display_name,"pt-BR"));
- const seen=new Set();
- sorted.forEach(s=>{
-  if(!s||s.classroom_id!==klass.id||s.active!==true||!/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||""))
-   throw new Error("Matrícula sem confirmação ou QR inválido.");
-  if(seen.has(s.local_reference))throw new Error("QR repetido.");
-  seen.add(s.local_reference);
- });
- const popup=window.open("","_blank");
- if(!popup)throw new Error("Autorize a abertura de novas abas para imprimir.");
- popup.opener=null;
- try{
-  const cards=sorted.map(s=>
-   '<article class="label-card"><div class="sticker"><div class="sticker-qr">'+QR(s.local_reference,"FICHA-V1")+'</div>'+
-   '<div class="sticker-code">'+esc(s.local_reference)+'</div></div>'+
-   '<div class="label-name">'+esc(s.display_name)+'</div></article>');
-  const pages=[];
-  for(let i=0;i<cards.length;i+=20){
-   pages.push('<section class="label-page"><div class="label-header"><strong>ETIQUETAS QR · '+esc(klass.label)+' · 2026</strong>'+
-    '<small>Recorte apenas dentro da borda pontilhada (37 × 43 mm). O nome do estudante fica FORA da etiqueta para orientar a distribuição.</small></div>'+
-    '<div class="label-grid">'+cards.slice(i,i+20).join("")+'</div></section>');
-  }
-  const labelCss='@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#173e33;background:#eef1ed}'+
-   '.label-page{width:210mm;height:297mm;padding:9mm 14mm 8mm;background:white;break-after:page;page-break-after:always;margin:12px auto;box-shadow:0 2px 8px #0002}'+
-   '.label-page:last-child{break-after:auto;page-break-after:auto}'+
-   '.label-header{height:30mm;font-size:13px;display:flex;flex-direction:column;gap:2mm}'+
-   '.label-header small{font-size:9px;line-height:1.4;color:#546c5e}'+
-   '.label-grid{display:grid;grid-template-columns:repeat(4,40mm);grid-template-rows:repeat(5,50mm);justify-content:center}'+
-   '.label-card{width:40mm;height:50mm;break-inside:avoid;display:flex;flex-direction:column;align-items:center}'+
-   '.sticker{width:37mm;height:43mm;border:1px dashed #728e7e;display:flex;flex-direction:column;align-items:center;overflow:hidden;background:white}'+
-   '.sticker-qr{width:34mm;height:34mm;flex:0 0 34mm;margin-top:1mm}.sticker-qr svg{display:block;width:100%;height:100%}'+
-   '.sticker-code{font-size:7.5px;line-height:1.2;font-weight:bold;white-space:nowrap;margin-top:2mm}'+
-   '.label-name{font-size:8px;font-weight:bold;line-height:1.15;text-align:center;width:39mm;max-height:6mm;overflow:hidden;padding-top:.6mm}'+
-   '.toolbar-label{background:#173e33;color:white;padding:12px;display:flex;gap:14px;align-items:center;justify-content:center}'+
-   '.toolbar-label button{background:#e8dcb9;border:0;border-radius:5px;padding:10px 14px;font-weight:bold;cursor:pointer}'+
-   '@media print{body{background:white}.toolbar-label{display:none}.label-page{margin:0;box-shadow:none}}';
-  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina · Etiquetas QR · '+esc(klass.label)+'</title><style>'+labelCss+'</style></head><body>'+
-   '<div class="toolbar-label"><button onclick="window.print()">Imprimir / salvar PDF</button><span>'+sorted.length+' etiqueta(s), '+pages.length+' folha(s) A4 · escala 100%. Recortar e colar no espaço indicado.</span></div>'+
-   pages.join("")+'</body></html>';
-  popup.document.open();popup.document.write(html);popup.document.close();popup.focus();
-  return {grade,students:sorted.length,pages:pages.length};
- }catch(e){popup.close();throw e;}
-}
-
 const keys={
  1:["6","Lê 14; escreve 9","1 dezena e 2 unidades","8","6","8, 10","Banana"],
  2:["34","Lê 86; escreve 120","4 dezenas e 7 unidades","39","12","30, 35","Bia"],
@@ -317,5 +201,5 @@ function testFixtureMarkup(){
  const student={id:'TESTE-FICTICIO',display_name:'ESTUDANTE FICTÍCIO — NÃO É MATRÍCULA',classroom_id:'TURMA-TESTE',active:true,local_reference:'SON-26-ABCDEF123456'};
  return markingOMR(student,{id:'TURMA-TESTE',label:'1º A (TESTE)'},true);
 }
-window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,printStandardSheet,printQrLabels,printSchoolPacket,version:"2026-ficha-omr-v2-piloto",pagesPerStudent:3};
+window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,printSchoolPacket,version:"2026-omr-v2-unico",pagesPerStudent:3};
 })();
