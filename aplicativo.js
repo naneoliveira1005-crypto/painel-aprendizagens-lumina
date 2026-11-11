@@ -358,7 +358,7 @@ function printSchoolReadyPacket(kind){
   const onlyPending=$('skipPublishedSchoolPacket')?.checked!==false;
   const chosen=onlyPending?students.filter(s=>!publishIds.has(s.id)):students;
   if(!chosen.length){window.alert('Todos os estudantes desta turma já têm resultado oficial. Desmarque o filtro para reimprimir.');return;}
-  if(!onlyPending&&students.length!==chosen.length&&!window.confirm('Reimprimir fichas mesmo para estudantes já avaliados?'))return;
+  if(!onlyPending&&students.some(student=>publishIds.has(student.id))&&!window.confirm('Esta turma já tem avaliação(ões) publicada(s). Deseja mesmo reimprimir todas as fichas?'))return;
   window.LuminaFichas.printSchoolPacket(chosen,klass,kind);
  }catch(error){
   window.alert('Não foi possível preparar o material: '+String(error?.message||'erro de impressão'));
