@@ -7,14 +7,14 @@
 </style>
 <script src="jsqr-fallback.js"></script>
 <script src="leitor-grade-fixa.js?v=20261111-pdf5-v1"></script>
-<script src="leitor-omr-v2.js?v=20261111-omr-pintado-v1"></script>
+<script src="leitor-omr-v2.js?v=20261111-omr-marcador-v2"></script>
 <script src="auto-a4.js?v=20261109-document-scan-v6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
-<header class="pagehead"><div class="brand">Lumina • Assessoria e Consultoria Educacional</div><h1>Painel de Aprendizagens</h1><p>Leitura de fichas · X anterior ou preenchimento OMR V2 · validação protegida</p></header>
+<header class="pagehead"><div class="brand">Lumina • Assessoria e Consultoria Educacional</div><h1>Painel de Aprendizagens</h1><p>Leitura de fichas preenchidas · OMR V2 · validação protegida</p></header>
 <main class="wrap">
-<div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão reconhece as fichas novas OMR V2 por quatro marcas de alinhamento e pelo interior dos quadradinhos pintados. Fichas antigas com X são tratadas separadamente. Se a grade não for confirmada, a ficha fica em revisão. Nenhuma resposta é aceita por simples aproximação. As fichas que não puderem ser identificadas com segurança seguem para revisão. A proporção da foto não é critério de reprovação: se os X foram identificados, é possível conferir somente o código impresso abaixo do QR, preservando as marcações.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
+<div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão reconhece as fichas novas OMR V2 por quatro marcas de alinhamento e pelo interior dos quadradinhos pintados. As respostas preenchidas só são aceitas quando o leitor confirma o QR e os campos. Se a grade não for confirmada, a ficha fica em revisão. Nenhuma resposta é aceita por simples aproximação. As fichas que não puderem ser identificadas com segurança seguem para revisão. A proporção da foto não é critério de reprovação: se os X foram identificados, é possível conferir somente o código impresso abaixo do QR, preservando as marcações.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
 <div class="grid">
 <section class="panel"><h2>1. Carregar as fichas</h2><p class="help">Selecione várias fotos (JPG/PNG) ou PDFs. Clique em <strong>Analisar lote inteiro</strong>: cada foto é localizada, enquadrada e corrigida automaticamente, sem marcar os cantos. Uma fotografia fora da proporção A4 não é rejeitada por isso. Apenas a identificação e as marcações incertas precisam de conferência.</p><input type="file" id="files" multiple accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"/><div class="buttons"><button id="analyze" disabled>▶ Analisar lote inteiro</button><button id="clear" class="alt">Limpar sessão</button></div><p class="message" id="message">Aguardando seleção de arquivos.</p><progress max="100" value="0" id="progress" aria-label="Progresso"></progress><p class="help" id="progressText">Nenhuma ficha analisada.</p></section>
 <section class="panel"><h2>2. Resultado do lote</h2><p class="help">As fichas com QR ausente, marcação dupla, marcação obrigatória vazia ou identificação repetida são separadas automaticamente.</p><div class="buttons"><button id="consolidate" disabled>✓ Consolidar fichas válidas</button><button id="csv" class="alt" disabled>⬇ Exportar CSV validado</button><button id="handoff" class="alt" disabled>Enviar lote para o Painel da Lumina</button></div><p class="message" id="exportInfo">Nenhum resultado consolidado nesta sessão.</p><p class="help">Consolidar, nesta versão, significa preparar o arquivo de teste para conferência. Não grava no banco.</p></section>
@@ -76,8 +76,8 @@ function collectErrors(entry){
   errors.push('QR não confirma o formato V2; não publicar');
  if(entry.formVersion!=='FICHA-V1'&&entry.formVersion!=='FICHA-V2'&&entry.code)
   errors.push('Versão da ficha não identificada pelo QR');
- for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': não foi possível confirmar um único X');}
- if(entry.shapeWarning)errors.push('Imagem não enquadrada (confira QR e X)');
+ for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': preenchimento da alternativa não confirmado');}
+ if(entry.shapeWarning)errors.push('Imagem não enquadrada (confira QR e os quatro marcos)');
  if(entry.alignmentWarning)errors.push('Alinhamento dos quadrinhos precisa de revisão');
  if(!entry.mathCheck)errors.push('A grade matemática ainda não passou na segunda verificação; conferir imagem');
  else if(entry.mathCheck.disagreements?.length)
