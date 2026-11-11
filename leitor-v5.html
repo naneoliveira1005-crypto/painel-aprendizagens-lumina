@@ -6,13 +6,14 @@
 :root{--green:#153e34;--green2:#28634e;--mint:#ecf4f0;--gold:#b49a58;--ink:#20332e;--muted:#5e746b;--line:#dbe6e1;--bg:#f5f7f5;--red:#a13636;--yellow:#946d21;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}h1,h2,h3,p{margin-top:0}.pagehead{background:var(--green);color:#fff;padding:25px max(20px,calc((100vw - 1220px)/2));border-bottom:5px solid var(--gold)}.pagehead .brand{letter-spacing:2px;text-transform:uppercase;opacity:.8;font-size:11px;font-weight:700}.pagehead h1{font-size:clamp(23px,3vw,33px);margin:8px 0}.pagehead p{margin:0;color:#d6e7df}.wrap{max-width:1220px;margin:25px auto;padding:0 16px 40px}.note{border:1px solid #e6d7b2;background:#fffdf7;border-radius:12px;padding:13px 16px;font-size:14px;line-height:1.5;margin-bottom:19px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:0 3px 12px rgba(25,65,50,.03);min-width:0}.panel h2{font-size:19px;margin-bottom:6px}.help{font-size:13px;color:var(--muted);line-height:1.5}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:9px;background:var(--green2);color:white;padding:11px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px}button.alt{border:1px solid var(--green2);color:var(--green2);background:white}button:disabled{opacity:.46;cursor:not-allowed}input[type=file]{max-width:100%;border:1px dashed #b7c8bf;padding:14px;background:#f9fcfa;border-radius:10px;width:100%}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:19px 0}.metric{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px}.metric b{display:block;font-size:27px;color:var(--green)}.metric span{font-size:12px;color:var(--muted)}progress{width:100%;height:12px;accent-color:var(--green2)}.long{grid-column:1/-1}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:15px 0}.toolbar select{width:auto}.scroll{overflow:auto;border:1px solid var(--line);border-radius:11px;max-height:410px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e5ece8;white-space:nowrap}th{position:sticky;top:0;background:#f0f5f1;z-index:1;font-size:12px;color:#4c675b}tr:hover td{background:#f7faf8}tbody tr{cursor:pointer}.pill{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:700;font-size:11px}.ok{background:#e1f3e8;color:#1e6944}.err{background:#fff2dc;color:#875e12}.pending{background:#eff1f0;color:#5f6f67}.selected td{background:#e7f1ec!important}.review{display:grid;grid-template-columns:1fr 1fr;gap:20px}.preview{width:auto;height:auto;max-width:100%;max-height:650px;background:#f7f7f7;border:1px solid var(--line);border-radius:9px;display:block;margin:0 auto;cursor:crosshair} .crop-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px} .crop-actions button{font-size:12px} .crop-help{font-size:13px;background:#edf4ef;border-radius:9px;padding:12px;margin:9px 0;line-height:1.55}.field{margin:12px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field select{border:1px solid #bacdc3;border-radius:9px;padding:9px;max-width:100%;width:100%;background:white;color:var(--ink)}.hint{font-size:12px;color:var(--muted)}.message{margin-top:10px;font-size:13px;min-height:20px}.checkboxes{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}.checkboxes label{font-size:12px}.footer{font-size:12px;color:#63746e;margin-top:23px}#reviewMessage{white-space:pre-line}.hide{display:none!important}@media(max-width:860px){.grid,.review{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.panel{padding:16px}}@media(max-width:480px){.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 <script src="jsqr-fallback.js"></script>
+<script src="leitor-grade-fixa.js?v=20261111-pdf5-v1"></script>
 <script src="auto-a4.js?v=20261109-document-scan-v6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
-<header class="pagehead"><div class="brand">Lumina • Assessoria e Consultoria Educacional</div><h1>Painel de Aprendizagens</h1><p>Leitura automática em lote · Teste local do QR Code e das marcações em X · V5</p></header>
+<header class="pagehead"><div class="brand">Lumina • Assessoria e Consultoria Educacional</div><h1>Painel de Aprendizagens</h1><p>Leitura de fichas em lote · Modelo fixo 2026 · Validação protegida</p></header>
 <main class="wrap">
-<div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão V5 tenta detectar automaticamente a folha A4, corrigir a perspectiva de cada foto e então reconhecer o QR Code e as marcações em X. As fichas que não puderem ser identificadas com segurança seguem para revisão. A proporção da foto não é critério de reprovação: se os X foram identificados, é possível conferir somente o código impresso abaixo do QR, preservando as marcações.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
+<div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão localiza a folha e utiliza um modelo fixo de 46 quadradinhos calibrados pela grade M1–M7. Se a grade não for confirmada, a ficha fica em revisão. Nenhuma resposta é aceita por simples aproximação. As fichas que não puderem ser identificadas com segurança seguem para revisão. A proporção da foto não é critério de reprovação: se os X foram identificados, é possível conferir somente o código impresso abaixo do QR, preservando as marcações.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
 <div class="grid">
 <section class="panel"><h2>1. Carregar as fichas</h2><p class="help">Selecione várias fotos (JPG/PNG) ou PDFs. Clique em <strong>Analisar lote inteiro</strong>: cada foto é localizada, enquadrada e corrigida automaticamente, sem marcar os cantos. Uma fotografia fora da proporção A4 não é rejeitada por isso. Apenas a identificação e as marcações incertas precisam de conferência.</p><input type="file" id="files" multiple accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"/><div class="buttons"><button id="analyze" disabled>▶ Analisar lote inteiro</button><button id="clear" class="alt">Limpar sessão</button></div><p class="message" id="message">Aguardando seleção de arquivos.</p><progress max="100" value="0" id="progress" aria-label="Progresso"></progress><p class="help" id="progressText">Nenhuma ficha analisada.</p></section>
 <section class="panel"><h2>2. Resultado do lote</h2><p class="help">As fichas com QR ausente, marcação dupla, marcação obrigatória vazia ou identificação repetida são separadas automaticamente.</p><div class="buttons"><button id="consolidate" disabled>✓ Consolidar fichas válidas</button><button id="csv" class="alt" disabled>⬇ Exportar CSV validado</button><button id="handoff" class="alt" disabled>Enviar lote para o Painel da Lumina</button></div><p class="message" id="exportInfo">Nenhum resultado consolidado nesta sessão.</p><p class="help">Consolidar, nesta versão, significa preparar o arquivo de teste para conferência. Não grava no banco.</p></section>
@@ -493,11 +494,31 @@ function corroborateMath(reading,all){
 }
 
 function getAnswers(canvas){
+ // Leitura por modelo físico único de 2026, calibrando os 46 quadradinhos
+ // a partir das 26–28 referências da grade M1–M7.
+ // Dados não podem ser aceitos oficialmente a partir de inferência livre.
+ let fixed=null;
+ try{fixed=window.LuminaGradeFixa?.scan?.(canvas)||null;}
+ catch(error){console.warn('Grade fixa indisponível:',error?.message);}
+ if(fixed?.aligned){
+  const counts={M:fixed.anchors,H:5,L:7,T:6};
+  return {answers:fixed.answers,scores:fixed.scores,aligned:true,
+   align:counts,candidates:fixed.shapes,thresholds:{H:.35,L:.31},
+   method:'grade fixa 2026 verificada por quadradinhos',
+   details:{template:'Sonia Maria 2026',anchors:fixed.anchors,missing:fixed.missing},
+   mathCheck:{method:'verificação da grade fixa',anchors:fixed.anchors,disagreements:[]}};
+ }
+ // O método antigo continua disponível SOMENTE como auxílio à conferência.
+ // Ele não pode declarar uma ficha "pronta" se a grade fixa não foi validada.
  const all=bwCandidates(canvas);
- const matched=getAnswersFromGrid(all)||getAnswersFromMathAnchors(all);if(matched)return corroborateMath(matched,all);
+ const matched=getAnswersFromGrid(all)||getAnswersFromMathAnchors(all);
+ if(matched){
+  const previous=corroborateMath(matched,all);
+  return {...previous,aligned:false,mathCheck:null,
+   details:{reason:fixed?.reason||'grade fixa indisponível',
+    anchors:fixed?.anchors||0,previous:previous.details||null}};
+ }
  const scores={},align={};
- // Matemática contém 28 pontos de ancoragem: usamos sua geometria também como
- // ponto de partida para blocos menores, evitando trocar as linhas entre si.
  const clusters={M:M.flat(),H,L,T:[...T1,...T2]};
  const math=calibrateGroup(clusters.M,null,all,[0,1,0,1]);
  align.M=math.paired;Object.assign(scores,math.scores);
@@ -508,14 +529,15 @@ function getAnswers(canvas){
  const answers={},thresholds={};
  for(const [_,key,options] of GROUPS){
   thresholds[key]=key==='H'?hypothesisThreshold(scores):
-    Math.max(MARK_THRESHOLD,median(options.map(k=>scores[k]||0))+.13);
+   Math.max(MARK_THRESHOLD,median(options.map(k=>scores[k]||0))+.13);
   answers[key]=uniqueMarked(options,scores);
  }
  thresholds.L=readingThreshold(scores);
  answers.L=L.filter(k=>scores[k]>=thresholds.L);
- const aligned=align.M>=20&&align.H>=3&&align.T>=4;
- return corroborateMath({answers,scores,align,aligned,candidates:all.boxes.length,thresholds},all);
+ return {answers,scores,align,aligned:false,candidates:all.boxes.length,thresholds,
+  mathCheck:null,details:{reason:fixed?.reason||'grade fixa indisponível',anchors:fixed?.anchors||0}};
 }
+
 function markSummary(entry){
  if(!entry.scores)return 'Resultado editado manualmente. Intensidades não disponíveis.';
  const lines=[];
