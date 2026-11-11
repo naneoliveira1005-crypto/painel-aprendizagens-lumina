@@ -61,12 +61,12 @@ function measure(gray,W,H){
  }
  return {bw,components};
 }
-function chooseAnchors(parts,W,H){
- // Prioriza o cabeçalho preto impresso na folha: permite localizar páginas
- // digitalizadas mesmo com pequenos fundos de mesa.
- // Os alvos têm cerca de 18 pontos, maiores que os quadrados de resposta.
- let candidates=parts.filter(q=>q.w>=W*.019&&q.w<=W*.060&&q.h>=W*.019&&q.h<=W*.060);
- if(candidates.length<4)return null;
+function chooseAnchors(parts,W,H,gray){
+ // V2: localizar primeiro os três marcos que ficam isolados (superior
+ // direito e os dois inferiores). O superior esquerdo pode se unir à
+ // primeira letra de "ESCOLA" em digitalizações reais.
+ const candidates=parts.filter(q=>q.w>=W*.019&&q.w<=W*.060&&q.h>=W*.019&&q.h<=W*.060);
+ if(candidates.length<3)return null;
  const zones=[
   q=>q.cx<W*.24&&q.cy<H*.29,
   q=>q.cx>W*.56&&q.cx<W*.91&&q.cy<H*.29,
@@ -74,29 +74,54 @@ function chooseAnchors(parts,W,H){
   q=>q.cx>W*.72&&q.cy>H*.73
  ];
  const target=[[.059,.115],[.760,.115],[.059,.940],[.940,.940]];
- let chosen=[];
- for(let i=0;i<4;i++){
+ const chosen=Array(4).fill(null);
+ for(const i of [1,2,3]){
   const ranked=candidates.filter(zones[i]).map(q=>({
    q,score:Math.abs(q.cx/W-target[i][0])*2+Math.abs(q.cy/H-target[i][1])*1.3+
-    Math.abs(q.w/W-.027)*5
+     Math.abs(q.w/W-.027)*5
   })).sort((a,b)=>a.score-b.score);
-  if(!ranked.length||ranked[0].score>.28)return null;
-  chosen.push(ranked[0].q);
+  if(!ranked.length||ranked[0].score>.20)return null;
+  chosen[i]=ranked[0].q;
  }
- if(new Set(chosen).size!==4)return null;
- const [tl,tr,bl,br]=chosen;
- const top=Math.hypot(tr.cx-tl.cx,tr.cy-tl.cy),bottom=Math.hypot(br.cx-bl.cx,br.cy-bl.cy);
- const left=Math.hypot(bl.cx-tl.cx,bl.cy-tl.cy),right=Math.hypot(br.cx-tr.cx,br.cy-tr.cy);
+ if(new Set(chosen.slice(1)).size!==3)return null;
+ const [tr,bl,br]=[chosen[1],chosen[2],chosen[3]];
+ // Transformação afim determinada pelos 3 marcos íntegros.
+ // A previsão é verificada contra a mancha ESCURA REAL do quarto marco.
+ const widthRatio=(454-35)/(559-35);
+ const predicted={cx:tr.cx+(bl.cx-br.cx)*widthRatio,
+  cy:tr.cy+(bl.cy-br.cy)*widthRatio};
+ const near=candidates.filter(q=>zones[0](q)&&
+  Math.abs(q.cx-predicted.cx)<W*.035&&Math.abs(q.cy-predicted.cy)<H*.035)
+  .sort((a,b)=>Math.hypot(a.cx-predicted.cx,a.cy-predicted.cy)-
+                     Math.hypot(b.cx-predicted.cx,b.cy-predicted.cy));
+ if(near.length)chosen[0]=near[0];
+ else{
+  // O marco não apareceu como componente porque ficou ligado ao texto.
+  // Só aceita a posição inferida se o núcleo 10×10 estiver bem escuro.
+  let count=0,dark=0;
+  const radius=Math.max(3,Math.round(W*.005));
+  for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+   const x=Math.round(predicted.cx+dx),y=Math.round(predicted.cy+dy);
+   if(x>=0&&x<W&&y>=0&&y<H){count++;if(gray[y*W+x]<150)dark++;}
+  }
+  if(!count||dark/count<.75)return null;
+  chosen[0]={cx:predicted.cx,cy:predicted.cy};
+ }
+ const [tl]=chosen;
+ const top=Math.hypot(tr.cx-tl.cx,tr.cy-tl.cy);
+ const bottom=Math.hypot(br.cx-bl.cx,br.cy-bl.cy);
+ const left=Math.hypot(bl.cx-tl.cx,bl.cy-tl.cy);
+ const right=Math.hypot(br.cx-tr.cx,br.cy-tr.cy);
  if(top<W*.40||bottom<W*.54||left<H*.55||right<H*.55||
     tr.cx<=tl.cx||br.cx<=bl.cx||bl.cy<=tl.cy||br.cy<=tr.cy||
-    top/bottom<.60||top/bottom>1.17||left/right<.78||left/right>1.28)
-  return null;
+    top/bottom<.60||top/bottom>1.17||left/right<.78||left/right>1.28)return null;
  return chosen.map(q=>({x:q.cx,y:q.cy}));
 }
+
 function scanGray(gray,W,H){
  if(!gray||gray.length!==W*H||W<350||H<480)return {aligned:false,reason:'resolution'};
  const {components}=measure(gray,W,H);
- const corners=chooseAnchors(components,W,H);
+ const corners=chooseAnchors(components,W,H,gray);
  if(!corners)return {aligned:false,reason:'registration_markers',found:components.length};
  const map=homography(corners);
  if(!map)return {aligned:false,reason:'perspective'};
