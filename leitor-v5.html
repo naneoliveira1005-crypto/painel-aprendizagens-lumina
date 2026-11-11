@@ -27,7 +27,7 @@
 <button id="resetCrop" class="alt hide" type="button">Recomeçar 4 cantos</button>
 <button id="applyCrop" type="button" class="hide">Aplicar enquadramento e reler</button>
 </div>
-<p class="crop-help hide" id="cropHelp" role="status" aria-live="polite">Clique nos quatro cantos da FOLHA de papel na foto, nesta ordem: 1º superior esquerdo; 2º superior direito; 3º inferior direito; 4º inferior esquerdo. Clique na borda do papel, não no quadradinho preto.</p><p class="help">Confira a foto, o QR e as marcações. <strong>O leitor tenta alinhar a ficha automaticamente durante a análise. Se houver pendência, verifique o motivo e a qualidade da foto antes de qualquer revisão manual.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se a câmera não conseguir ler o QR, digite exatamente o código SON-26-... impresso abaixo dele, conferindo também o nome e a turma. As marcações já identificadas são preservadas. A vinculação será conferida no painel protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><div class="buttons"><button id="saveReview" class="alt">Confirmar código e revisão (não publica)</button><button id="undoReview" class="alt">Desfazer revisão e reler automaticamente</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
+<p class="crop-help hide" id="cropHelp" role="status" aria-live="polite">Clique nos quatro cantos da FOLHA de papel na foto, nesta ordem: 1º superior esquerdo; 2º superior direito; 3º inferior direito; 4º inferior esquerdo. Clique na borda do papel, não no quadradinho preto.</p><p class="help">Confira a foto, o QR e as marcações. <strong>O leitor tenta alinhar a ficha automaticamente durante a análise. Se houver pendência, verifique o motivo e a qualidade da foto antes de qualquer revisão manual.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se a câmera não conseguir ler o QR, digite exatamente o código SON-26-... impresso abaixo dele, conferindo também o nome e a turma. As marcações já identificadas são preservadas. A vinculação será conferida no painel protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><label style="display:flex;align-items:center;gap:8px;margin:14px 0"><input type="checkbox" id="manualReviewConfirmed" style="width:17px;height:17px"> Conferi as respostas desta ficha diretamente com o documento original.</label><div class="buttons"><button id="saveReview" class="alt">Confirmar correção conferida (não publica)</button><button id="undoReview" class="alt">Desfazer revisão e reler automaticamente</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
 <p class="footer">Projeto escolar Lumina • Escola Municipal Sônia Maria Pereira do Nascimento. Protótipo de validação: uso sem identificação de crianças. A leitura QR usa BarcodeDetector ou a biblioteca jsQR local. A Matemática passa por uma segunda leitura independente dos centros da grade, e divergências são encaminhadas à conferência. O contraste do campo de hipótese de escrita foi ajustado com base em variações de resolução das sete páginas do PDF de teste do 2º A e nas três fichas fictícias. A decisão automática deve ser verificada por amostragem antes de qualquer utilização oficial. O PDF é carregado usando biblioteca PDF.js; nenhum resultado é enviado ao Supabase.</p>
 </main>
 <script>
@@ -943,7 +943,8 @@ $('applyCrop').onclick=async()=>{
  }finally{button.disabled=false;button.textContent='Aplicar enquadramento e reler'}
 };
 async function selectItem(i){cropMode=false;cropSource=null;cropPoints=[];$('cropHelp').classList.add('hide');$('resetCrop').classList.add('hide');$('applyCrop').classList.add('hide');$('startCrop').classList.remove('hide');selectedIndex=i;const entry=queue[i];$('editPanel').classList.remove('hide');$('editTitle').textContent=entry.label+' · '+statusLabel(entry.state);
- $('studentCode').value=entry.code||'';$('reviewMessage').textContent=(entry.issues||[]).join(' · ');$('markDiagnostics').textContent=markSummary(entry);
+ $('studentCode').value=entry.code||'';$('manualReviewConfirmed').checked=false;
+ $('reviewMessage').textContent=(entry.issues||[]).join(' · ');$('markDiagnostics').textContent=markSummary(entry);
  const ctr=$('selections');ctr.replaceChildren();for(const [name,key,opts] of GROUPS){ctr.append(makeSelect(name,key,opts,entry.answers?.[key]));}
  const group=document.createElement('div');group.className='field';const lbl=document.createElement('label');lbl.textContent='Habilidades de leitura (marque todas as observadas)';group.append(lbl);const checks=document.createElement('div');checks.className='checkboxes';for(const k of L){const lab=document.createElement('label');const chk=document.createElement('input');chk.type='checkbox';chk.value=k;chk.dataset.reading='1';chk.checked=entry.answers?.L?.includes(k)||false;lab.append(chk,' '+LABELS[k]);checks.append(lab)}group.append(checks);ctr.append(group);
  const p=$('preview');const ctx=p.getContext('2d');ctx.clearRect(0,0,p.width,p.height);try{const image=await renderEntry(entry);p.width=image.width;p.height=image.height;p.getContext('2d').drawImage(image,0,0);}catch(err){p.width=595;p.height=842;p.getContext('2d').fillText('Não foi possível exibir esta ficha.',20,80)}
@@ -970,10 +971,27 @@ $('undoReview').onclick=async()=>{
  }finally{button.disabled=false;button.textContent='Desfazer revisão e reler automaticamente';}
 };
 $('closeReview').onclick=()=>{$('editPanel').classList.add('hide');selectedIndex=-1;renderList()};
-$('saveReview').onclick=()=>{if(selectedIndex<0)return;const entry=queue[selectedIndex];if(entry.state==='consolidated'){tell('Registros já consolidados não são modificados nesta versão demonstrativa.');return;}if(!window.confirm('Aplicar estas alterações SOMENTE na aba atual? Nada será salvo no banco de dados nem publicado.'))return;
- const code=$('studentCode').value.toUpperCase().trim();entry.code=code;for(const s of document.querySelectorAll('#selections select[data-key]'))entry.answers[s.dataset.key]=s.value;
- entry.answers.L=Array.from(document.querySelectorAll('#selections input[data-reading]:checked')).map(n=>n.value);recalcState(entry);recalcDuplicates();renderList();
- $('reviewMessage').textContent=entry.issues.length?'Ainda precisa de revisão: '+entry.issues.join('; '):'Revisão aplicada apenas nesta aba; nada foi salvo no banco. Ficha pronta para consolidar localmente.';
+$('saveReview').onclick=()=>{
+ if(selectedIndex<0)return;
+ const entry=queue[selectedIndex];
+ if(entry.state==='consolidated'){tell('Ficha já consolidada; não é possível alterar este registro.');return;}
+ if(!$('manualReviewConfirmed').checked){
+  $('reviewMessage').textContent='Confira os quadradinhos no documento original e marque a confirmação acima. Não escolha uma resposta por tentativa.';
+  return;
+ }
+ if(entry.formVersion!=='FICHA-V2'||entry.template!=='FICHA-V2'||entry.alignmentWarning||!entry.mathCheck){
+  $('reviewMessage').textContent='A revisão só pode liberar fichas V2 com QR e quatro marcos reconhecidos. Refaça a digitalização se o documento não estiver alinhado.';
+  return;
+ }
+ if(!window.confirm('Confirmar as respostas conferidas com a ficha original? A correção ficará identificada como revisão humana e não será publicada automaticamente.'))return;
+ const code=$('studentCode').value.toUpperCase().trim();
+ entry.code=code;
+ for(const field of document.querySelectorAll('#selections select[data-key]'))entry.answers[field.dataset.key]=field.value;
+ entry.answers.L=Array.from(document.querySelectorAll('#selections input[data-reading]:checked')).map(n=>n.value);
+ entry.manualVerified=true;
+ recalcState(entry);recalcDuplicates();renderList();
+ $('reviewMessage').textContent=entry.issues.length?'Ainda precisa de revisão: '+entry.issues.join('; '):
+  'Respostas conferidas manualmente. Ficha pronta para consolidar; a publicação oficial depende da coordenação.';
 };
 $('consolidate').onclick=()=>{const available=queue.filter(x=>x.state==='ready');if(!available.length)return;const uniq=new Set(consolidated.keys());let added=0;
  for(const e of available){if(uniq.has(e.code))continue;const record={codigo:e.code,arquivo:e.label,hipotese:e.answers.H,leitura:e.answers.L.join('|'),memoria:e.answers.T1,narrativo:e.answers.T2};for(let i=1;i<=7;i++)record['M'+i]=e.answers['M'+i];consolidated.set(e.code,record);uniq.add(e.code);e.state='consolidated';added++}
