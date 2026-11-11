@@ -91,7 +91,52 @@ function marking(s,c,test=false,standard=false){
  o.push(txt(34,806,"Marque X dentro do quadrado, sem pintar o fundo. A câmera lê apenas QR e X.",8.2,"normal","#596b61"));
  if(test)o.push(txt(34,831,"FICHA FICTÍCIA DE TESTE. NÃO REGISTRAR NO PAINEL.",8.4,"bold","#a13434"));
  return '<section class="page marking"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="100%">'+o.join("")+'</svg></section>';
+}const markOMR=(x,y,t,filled=false)=>rect(x,y,12,12,"white","#102018")+
+ (filled?rect(x+1.5,y+1.5,9,9,"#101713"):'')+txt(x+16,y+10,t,9.6);
+
+function markingOMR(s,c,test=false){
+ const o=[];
+ const testPositions=new Set(['320:191','40:255','40:273','40:291','320:255','320:273','245:360','245:380','350:445','405:464','350:483','460:502','350:521','350:540','405:559']);
+ const box=(x,y,label)=>markOMR(x,y,label,test&&testPositions.has(x+':'+y));
+ const band=(y,title)=>{o.push(rect(33,y,528,17,"#e8f1ed"));o.push(txt(41,y+12,title,10,"bold","#20483a"));};
+ o.push(rect(0,0,W,82,"#173e33"));
+ o.push(txt(34,32,"FICHA DIAGNÓSTICA INTEGRADA",17,"bold","white"));
+ o.push(txt(34,52,"LÍNGUA PORTUGUESA + MATEMÁTICA | 2026 • OMR V2",11,"normal","white"));
+ o.push(rect(474,26,105,106,"white"));
+ o.push(QR(s.local_reference,"FICHA-V2").replace(/<svg /,'<svg x="478" y="30" width="96" height="96" '));
+ o.push(txt(34,111,"ESCOLA: "+SCHOOL,9));
+ o.push(txt(34,128,"ESTUDANTE: "+s.display_name,10,"bold"));
+ o.push(txt(34,145,"TURMA: "+c.label+"     DATA: ____/____/2026",10));
+ o.push(txt(475,143,s.local_reference,8,"bold","#325343"));
+ band(152,"A. HIPÓTESE DE ESCRITA — PINTE UMA");
+ [["Pré-silábica",40,173],["Silábica sem valor",40,191],["Silábica com valor",40,209],["Silábico-alfabética",320,173],["Alfabética",320,191]].forEach(x=>o.push(box(x[1],x[2],x[0])));
+ band(233,"B. LEITURA — PINTE OS QUADRADOS OBSERVADOS");
+ [["Reconhece letras",40,255],["Lê letras isoladas",40,273],["Lê sílabas simples",40,291],["Lê sílabas complexas",40,309],["Lê palavras",320,255],["Lê frases simples",320,273],["Lê frases complexas",320,291]].forEach(x=>o.push(box(x[1],x[2],x[0])));
+ band(335,"C. LEITURA DE TEXTOS — UMA OPÇÃO POR LINHA");
+ o.push(txt(40,369,"Texto de memória",10));o.push(txt(40,389,"Texto narrativo",10));
+ [["Lê",245,360],["Recita",340,360],["Não lê",445,360],["Fluente",245,380],["Sem fluência",340,380],["Não lê",445,380]].forEach(x=>o.push(box(x[1],x[2],x[0])));
+ band(408,"D. MATEMÁTICA — UMA OPÇÃO POR INDICADOR");
+ o.push(txt(40,438,"A=sozinho | P=parcial/ajuda | N=não demonstrou | NO=não observado",9));
+ const labs=["Contagem e quantificação","Leitura e escrita de números","Sistema decimal","Adição e subtração","Grupos iguais e repartição","Sequências e regularidades","Leitura de dados"];
+ labs.forEach((lab,i)=>{const y=445+i*19;o.push(txt(40,y+9,"M"+(i+1)+" "+lab,9.6));[["A",350],["P",405],["N",460],["NO",515]].forEach(v=>o.push(box(v[1],y,v[0])))});
+ band(594,"OBSERVAÇÕES PEDAGÓGICAS COMPLEMENTARES — MANUAIS");
+ o.push(txt(40,634,"Memória: leitura com apoio/autonomia e fluência:",9.8));
+ o.push(rect(40,642,510,1,"#afc1b6"));
+ o.push(txt(40,667,"Narrativa: leitura com apoio/autonomia e fluência:",9.8));
+ o.push(rect(40,675,510,1,"#afc1b6"));
+ o.push(txt(40,700,"Compreensão: autônoma/com mediação/não demonstrada:",9.8));
+ o.push(rect(40,708,510,1,"#afc1b6"));
+ o.push(txt(40,738,"Observações adicionais:",9.8));
+ o.push(rect(40,745,510,1,"#afc1b6"));o.push(rect(40,773,510,1,"#afc1b6"));
+ o.push(txt(34,807,"PREENCHA COMPLETAMENTE o quadrado escolhido. Use caneta preta ou azul-escura. Não use X.",8.3,"bold","#345b49"));
+ o.push(txt(34,822,"Somente a ficha de correção preenchida deve ser digitalizada. Não rasurar nem dobrar.",8.0,"normal","#53695d"));
+ // Quatro referências de registro óptico. Nenhuma altera a resposta.
+ // Devem ser totalmente visíveis no PDF ou na fotografia.
+ [[26,88],[445,88],[26,782],[550,782]].forEach(([x,y])=>o.push(rect(x,y,18,18,"#101713")));
+ if(test)o.push(txt(34,835,"TESTE FICTÍCIO • NÃO PUBLICAR",8.3,"bold","#a13434"));
+ return '<section class="page marking" data-template="FICHA-V2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="100%">'+o.join("")+'</svg></section>';
 }
+
 const css="@page{size:A4;margin:0}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#eef1ee;color:#23392f}.toolbar{margin:12px auto;max-width:950px;background:#173e33;color:white;padding:12px 16px;border-radius:9px;display:flex;gap:15px;align-items:center;font-size:12px}.toolbar button{background:#f4ead3;color:#173e33;border:none;border-radius:6px;font-weight:bold;padding:10px 16px;cursor:pointer}.page{width:210mm;height:297mm;background:white;margin:15px auto;position:relative;overflow:hidden;break-after:page;page-break-after:always;box-shadow:0 3px 9px #0002}.page:last-child{break-after:auto;page-break-after:auto}.activity{padding:12mm 14mm 10mm}.head{display:flex;gap:7mm;justify-content:space-between;align-items:start;border-bottom:2px solid #b59d65;padding-bottom:4mm;margin-bottom:5mm;min-height:34mm}.headtext{flex:1;min-width:0}.head small{font-size:8.5px;color:#28634e;font-weight:bold}.head h1{font-size:17px;margin:3mm 0 2mm}.head p{font-size:9.7px;margin:1.6mm 0}.qr-wrap{width:30mm;min-width:30mm;text-align:center}.qr-small{width:26mm;height:26mm;margin:0 auto}.qr-small svg{width:100%;height:100%}.qr-readable{font:7.7px monospace;color:#425d4e;white-space:nowrap}.instruction{font-size:10.5px;padding:7px 9px;background:#edf4ef;margin-bottom:5mm}.activity h2{font-size:11px;background:#edf4ef;padding:5px 7px;margin:4mm 0 2.5mm}.write{height:6.7mm;border-bottom:1px solid #85998e;margin:1mm 0;font-size:11px}.poem{font-size:11.7px;line-height:1.4;margin-left:4mm}.storytitle{font-size:12px}.story{font-size:11.2px;line-height:1.26}.story p{margin:0 0 6px}.question{font-size:10.4px;margin:2mm 0}.math-item{padding:3.2mm 0;border-bottom:1px solid #dae2da;font-size:11.4px}.math-item h3{font-size:10.8px;color:#21483b;margin:0 0 2mm}.answer{font-size:9.2px;color:#6c7a70;white-space:nowrap;margin:3mm 0 0}.activity footer{position:absolute;bottom:7mm;left:14mm;right:14mm;font-size:8.3px;color:#66786d;border-top:1px solid #d8e2d8;padding-top:2mm}.marking svg{display:block}@media print{body{background:white}.toolbar{display:none}.page{box-shadow:none;margin:0}}";
 function printSet(rows,klass){
  if(!window.qrcode)throw new Error("Biblioteca QR indisponível");
@@ -104,8 +149,8 @@ function printSet(rows,klass){
  if(!p)throw new Error("O navegador bloqueou a nova aba de impressão.");
  p.opener=null;
  try{
-  const pages=rows.slice().sort((a,b)=>a.display_name.localeCompare(b.display_name,"pt-BR")).map(s=>language(s,klass,grade)+mathematics(s,klass,grade)+marking(s,klass)).join("");
-  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina | Fichas '+esc(klass.label)+'</title><style>'+css+'</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir ou salvar em PDF</button><span>'+rows.length+' estudante(s) • '+(rows.length*3)+' páginas • LP + Matemática + Ficha Única de X • Uso interno</span></div>'+pages+'</body></html>';
+  const pages=rows.slice().sort((a,b)=>a.display_name.localeCompare(b.display_name,"pt-BR")).map(s=>language(s,klass,grade)+mathematics(s,klass,grade)+markingOMR(s,klass)).join("");
+  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina | Fichas '+esc(klass.label)+'</title><style>'+css+'</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir ou salvar em PDF</button><span>'+rows.length+' estudante(s) • '+(rows.length*3)+' páginas • LP + Matemática + Ficha Óptica de Preenchimento V2 • Uso interno</span></div>'+pages+'</body></html>';
   p.document.open();p.document.write(html);p.document.close();p.focus();
   return {students:rows.length,pages:rows.length*3};
  }catch(err){p.close();throw err;}
@@ -135,14 +180,14 @@ function printSchoolPacket(rows,klass,kind="correction"){
  popup.opener=null;
  try{
   const pages=sorted.map(s=>{
-   if(kind==="correction")return marking(s,klass);
+   if(kind==="correction")return markingOMR(s,klass);
    if(kind==="activities")return language(s,klass,grade)+mathematics(s,klass,grade);
-   return language(s,klass,grade)+mathematics(s,klass,grade)+marking(s,klass);
+   return language(s,klass,grade)+mathematics(s,klass,grade)+markingOMR(s,klass);
   }).join("");
   const pagesPerStudent=kind==="correction"?1:kind==="activities"?2:3;
-  const title=kind==="correction"?"Fichas de correção prontas":kind==="activities"?"Atividades para aplicar":"Avaliação completa";
+  const title=kind==="correction"?"Fichas de correção OMR V2 prontas":kind==="activities"?"Atividades para aplicar":"Avaliação completa";
   const banner=title+" · "+klass.label+" · "+sorted.length+" estudantes · "+(sorted.length*pagesPerStudent)+" páginas A4"+
-   " · QR impresso diretamente na ficha · Sem etiquetas";
+   " · QR FICHA-V2 integrado · Sem etiquetas";
   const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>'+esc(banner)+'</title><style>'+css+'</style></head><body>'+
    '<div class="toolbar"><button type="button" onclick="window.print()">Imprimir / salvar em PDF</button>'+
    '<span>'+esc(banner)+'. Impressão centralizada pela escola. A4, tamanho real (100%).</span></div>'+
@@ -262,7 +307,7 @@ function printTestSheet(){
  try{
    const student={id:'TESTE-FICTICIO',display_name:'ESTUDANTE FICTÍCIO — NÃO É MATRÍCULA',classroom_id:'TURMA-TESTE',active:true,local_reference:'SON-26-ABCDEF123456'};
    const klass={id:'TURMA-TESTE',label:'1º A (TESTE)'};
-   const page=marking(student,klass,true);
+   const page=markingOMR(student,klass,true);
    const documentHtml='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Lumina | Ficha fictícia para testar QR + X</title><style>'+css+'</style></head><body><div class="toolbar"><button type="button" onclick="window.print()">Imprimir ou salvar em PDF</button><span>1 página A4 • FICHA FICTÍCIA • 15 quadradinhos marcados em X • não cadastrar como avaliação real</span></div>'+page+'</body></html>';
    popup.document.open();popup.document.write(documentHtml);popup.document.close();popup.focus();
  }catch(err){popup.close();throw err;}
@@ -270,7 +315,7 @@ function printTestSheet(){
 
 function testFixtureMarkup(){
  const student={id:'TESTE-FICTICIO',display_name:'ESTUDANTE FICTÍCIO — NÃO É MATRÍCULA',classroom_id:'TURMA-TESTE',active:true,local_reference:'SON-26-ABCDEF123456'};
- return marking(student,{id:'TURMA-TESTE',label:'1º A (TESTE)'},true);
+ return markingOMR(student,{id:'TURMA-TESTE',label:'1º A (TESTE)'},true);
 }
-window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,printStandardSheet,printQrLabels,printSchoolPacket,version:"2026-kit-escolar-pronto-v7",pagesPerStudent:3};
+window.LuminaFichas={printSet,printGuide,printTestSheet,testFixtureMarkup,printStandardSheet,printQrLabels,printSchoolPacket,version:"2026-ficha-omr-v2-piloto",pagesPerStudent:3};
 })();
