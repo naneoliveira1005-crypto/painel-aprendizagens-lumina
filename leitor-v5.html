@@ -7,7 +7,7 @@
 </style>
 <script src="jsqr-fallback.js"></script>
 <script src="leitor-grade-fixa.js?v=20261111-pdf5-v1"></script>
-<script src="leitor-omr-v2.js?v=20261111-omr-marcador-v2"></script>
+<script src="leitor-omr-v2.js?v=20261111-marcadores-e-m5-v3"></script>
 <script src="auto-a4.js?v=20261109-document-scan-v6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
@@ -79,7 +79,8 @@ function collectErrors(entry){
  for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': preenchimento da alternativa não confirmado');}
  if(entry.shapeWarning)errors.push('Imagem não enquadrada (confira QR e os quatro marcos)');
  if(entry.alignmentWarning)errors.push('Alinhamento dos quadrinhos precisa de revisão');
- if(!entry.mathCheck)errors.push('A grade matemática ainda não passou na segunda verificação; conferir imagem');
+ if(!entry.mathCheck&&entry.template!=='FICHA-V2')
+  errors.push('A grade matemática ainda não passou na segunda verificação; conferir imagem');
  else if(entry.mathCheck.disagreements?.length)
   errors.push('As duas leituras da Matemática divergem em '+entry.mathCheck.disagreements.join(', ')+'; revisão obrigatória');
  if(entry.code){const duplicate=queue.some(o=>o!==entry&&o.code===entry.code&&o.state!=='pending');if(duplicate)errors.push('Código repetido');}
@@ -512,7 +513,8 @@ function getAnswers(canvas){
    candidates:omr.fieldCount||0,thresholds:{H:.58,L:.58},
    method:'Preenchimento sólido OMR V2 por quatro referências',
    details:{reason:omr.reason,uncertain:omr.uncertain,markers:omr.anchors?.length||0},
-   mathCheck:omr.aligned?{method:'OMR por preenchimento sólido',anchors:4,disagreements:[]}:null};
+   mathCheck:omr.aligned&&omr.anchors?.length===4?
+    {method:'OMR V2, quatro marcas geométricas verificadas',anchors:4,disagreements:[]}:null};
  }
 
  // Leitura por modelo físico único de 2026, calibrando os 46 quadradinhos
@@ -564,8 +566,15 @@ function markSummary(entry){
  const lines=[];
  if(entry.mathCheck){
   const conflicts=entry.mathCheck.disagreements||[];
-  lines.push('Verificação complementar M1–M7: '+(conflicts.length?'CONFERÊNCIA NECESSÁRIA ('+conflicts.join(', ')+')':'grade confirmada por leitura independente')+
-   ' · quadradinhos de referência: '+entry.mathCheck.anchors);
+  if(entry.template==='FICHA-V2'){
+    lines.push('Alinhamento OMR V2 confirmado por '+entry.mathCheck.anchors+
+      ' marcos. Cada resposta incerta continua bloqueada e deve ser conferida com o papel.');
+  }else{
+    lines.push('Verificação complementar M1–M7: '+(conflicts.length?
+       'CONFERÊNCIA NECESSÁRIA ('+conflicts.join(', ')+')':
+       'grade confirmada por leitura independente')+
+       ' · quadradinhos de referência: '+entry.mathCheck.anchors);
+  }
  }else{
   lines.push('Verificação complementar da grade: não conclusiva; revisão obrigatória');
  }
