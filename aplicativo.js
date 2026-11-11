@@ -35,7 +35,7 @@ function notice(msg,cls=''){return `<div class="notice ${cls}">${msg}</div>`;}
 function selectedData(){return mode==='demo'?demoData:loaded;}
 function render(){
  if(mode==='guest')return;
- const pageTitles={visao:['Visão geral','Acompanhamento das aprendizagens e do percurso pedagógico.'],turmas:['Turmas','Organização das classes e responsabilidades.'],avaliacoes:['Avaliações','Registros pedagógicos e indicadores por componente.'],lotes:['Leitura de fichas','Validação de QR Codes e marcações em X.'],equipe:['Equipe e acessos','Gestão de vínculos e permissões institucionais.']};
+ const pageTitles={visao:['Visão geral','Acompanhamento das aprendizagens e do percurso pedagógico.'],turmas:['Turmas','Organização das classes e responsabilidades.'],avaliacoes:['Avaliações','Registros pedagógicos e indicadores por componente.'],lotes:['Leitura de fichas','Envio de PDF ou foto da ficha preenchida.'],equipe:['Equipe e acessos','Gestão de vínculos e permissões institucionais.']};
  const [title,subtitle]=pageTitles[currentPage]; $('pageTitle').textContent=title;$('pageSubtitle').textContent=subtitle;
  $('roleLabel').textContent=roleName[role]||'Acesso institucional';
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.classList.toggle('current',btn.dataset.page===currentPage));
@@ -43,7 +43,16 @@ function render(){
  $('modeBanner').textContent=mode==='demo'?'MODO DEMONSTRAÇÃO · Os dados exibidos são exemplos fictícios. Não há consulta, importação nem gravação de registros reais.':'';
  $('demoRoleLabel').classList.toggle('hidden',mode!=='demo');
  const d=selectedData();
- $('content').innerHTML=({visao:()=>home(d),turmas:()=>classes(d),avaliacoes:()=>assessments(d),lotes:()=>batches(d),equipe:()=>team(d)})[currentPage]();
+ let pageMarkup='';
+ try{
+  pageMarkup=({visao:()=>home(d),turmas:()=>classes(d),avaliacoes:()=>assessments(d),lotes:()=>batches(d),equipe:()=>team(d)})[currentPage]();
+ }catch(err){
+  console.error('Falha ao abrir a seção',currentPage,err);
+  pageMarkup='<div class="card"><h2>Não foi possível carregar esta seção</h2>'+
+   '<p>O conteúdo anterior foi ocultado para evitar confusão. Atualize a página.</p>'+
+   '<p>Para analisar uma ficha sem alterar resultados, <a href="leitor-v5.html?v=20261111-omr-alinhamento-real-v18" target="_blank" rel="noopener noreferrer">abrir o leitor de PDF ou foto</a>.</p></div>';
+ }
+ $('content').innerHTML=pageMarkup;
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
  const classroomPicker=$('studentClassFilter'); if(classroomPicker)classroomPicker.addEventListener('change',e=>{selectedRosterClass=e.target.value;render()});
  const resultPicker=$('resultsClassFilter');if(resultPicker)resultPicker.addEventListener('change',e=>{selectedResultsClass=e.target.value;render()});
@@ -483,16 +492,40 @@ async function confirmImportedReview(id,button){
 }
 
 function batches(d){
- const admin=role==='pedagogical_admin';
- const savedPilot=pilotStageMessage?notice(clean(pilotStageMessage),'info'):'';
- const safeReadingNotice=notice('<strong>Modelo único de preenchimento.</strong> Preencha completamente os quadradinhos da ficha com QR individual. Faça o envio em PDF para leitura; os resultados só são publicados depois da conferência. Impressão em massa ainda bloqueada até a validação no site.','info');
- const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
- return `${savedPilot}${safeReadingNotice}${notice('O leitor de fichas funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A publicação oficial só é autorizada pela coordenação após confirmar todas as fichas do lote. Dados de teste não devem ser publicados.','info')}
- <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste (sem cadastro)</button> <a href="leitor-v5.html?v=20261111-omr-alinhamento-real-v18" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor de fichas →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor de preenchimento recebe PDF ou imagem da ficha de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
- ${admin?`<div class="card"><h2>Histórico de lotes da escola</h2><p>Somente a coordenação acompanha fichas publicadas ou ainda em conferência.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Histórico de fichas desta escola: ${d.importRows.length}; publicadas: ${d.importRows.filter(r=>r.validation_status==='committed').length}; aguardando conferência: ${d.importRows.filter(r=>r.validation_status!=='committed').length}.</p>`:''}</div>`:''}
- ${admin?importedReviewPanel(d):''}
- <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados. A coordenação poderá registrar um piloto com até dez fichas da mesma turma após a conferência, aguardando validação pedagógica.</p></div>`;
+ // O envio deve ser a primeira ação na aba de leitura, sem botão escondido.
+ const readerUrl='leitor-v5.html?v=20261111-omr-alinhamento-real-v18';
+ const reader=mode==='live'&&role==='pedagogical_admin'?
+  '<div class="card" id="readerTop"><h2>1. Enviar ficha preenchida</h2>'+
+  '<p>Selecione o PDF digitalizado no Drive ou uma fotografia JPG/PNG. O leitor identifica o QR Code e os quadradinhos pintados.</p>'+
+  '<iframe id="pilotReaderIframe" title="Envio e leitura de fichas OMR V2" src="'+readerUrl+'" loading="eager" style="width:100%;height:1100px;border:1px solid #d6e5d9;border-radius:10px;background:white" referrerpolicy="same-origin"></iframe>'+
+  '<p class="intro-note">Se precisar de mais espaço, <a href="'+readerUrl+'" target="_blank" rel="noopener noreferrer">abra o leitor em uma nova aba</a>. A leitura da ficha não publica dados automaticamente.</p></div>':
+  '<div class="card"><h2>Leitura de fichas</h2><p>O envio institucional está disponível somente para a coordenação autorizada.</p></div>';
+ if(mode!=='live'||role!=='pedagogical_admin')return reader;
+ let extras='';
+ try{
+  const batchList=(d.batches||[]).map(b=>
+   '<tr><td>'+clean(b.source_filename||'Lote de leitura')+'</td><td>'+
+   clean((d.classrooms||[]).find(c=>c.id===b.classroom_id)?.label||'—')+'</td><td>'+
+   clean(b.expected_rows??'—')+'</td><td>'+chip(b.status)+'</td></tr>').join('');
+  extras=
+   '<div class="card"><h2>2. Conferir vínculo com a matrícula</h2>'+
+   '<p>Depois de analisar a ficha, confira as marcações e clique em <strong>Consolidar fichas válidas</strong> e <strong>Enviar lote para o Painel da Lumina</strong>. A conferência aparecerá abaixo, sem publicar automaticamente.</p>'+
+   '<input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv" aria-label="Importar CSV de conferência, somente se necessário">'+
+   '<div id="csvReport" class="report" role="status">Aguardando leitura e conferência da ficha.</div></div>'+
+   importedReviewPanel(d)+
+   '<details class="card"><summary><strong>Histórico de lotes da escola</strong></summary>'+
+   '<div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>'+
+   (batchList||'<tr><td colspan="4">Nenhum lote cadastrado.</td></tr>')+'</tbody></table></div>'+
+   '<p class="intro-note">As avaliações anteriores permanecem preservadas e não são alteradas pelo novo modelo OMR V2.</p></details>';
+ }catch(error){
+  console.error('A conferência de registros não pôde ser apresentada:',error);
+  extras='<div class="card"><h2>Conferência de dados</h2>'+
+   '<p>A leitura continua disponível acima. O histórico não foi carregado; nenhuma ficha foi alterada. Atualize a página antes de publicar resultados.</p>'+
+   '<div id="csvReport" class="report" role="status">Conferência institucional indisponível.</div></div>';
+ }
+ return reader+extras;
 }
+
 function team(d){
  if(role==='teacher') return `<div class="card"><h2>Minha autorização</h2><p>Você pode consultar as turmas vinculadas ao seu perfil. A coordenação confirma vínculos e altera permissões.</p>${notice('Se alguma turma não aparecer, procure a coordenação pedagógica. Não compartilhe senha nem CPF.','info')}</div>`;
  if(role==='director')return `<div class="card"><h2>Visão institucional</h2><p>A direção acompanha informações coletivas. A atribuição de turmas e o lançamento de resultados dependem da coordenação.</p>${notice('Os dados individuais das crianças não estão disponíveis neste perfil.','info')}</div>`;
@@ -845,7 +878,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render()}));
- $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const embedded=e.target.closest('[data-embed-reader]');if(embedded&&mode==='live'&&role==='pedagogical_admin'){const holder=$('pilotReaderContainer');if(holder&&!holder.querySelector('iframe')){const iframe=document.createElement('iframe');iframe.id='pilotReaderIframe';iframe.title='Leitor V5 protegido para piloto';iframe.src='leitor-v5.html?v=20261111-omr-alinhamento-real-v18';iframe.style.width='100%';iframe.style.height='940px';iframe.style.border='1px solid #d6e5d9';iframe.style.borderRadius='10px';holder.appendChild(iframe);embedded.textContent='Leitor aberto abaixo';embedded.disabled=true;}return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const schoolPacket=e.target.closest('[data-school-packet]');if(schoolPacket){printSchoolReadyPacket(schoolPacket.dataset.schoolPacket);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
+ $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const schoolPacket=e.target.closest('[data-school-packet]');if(schoolPacket){printSchoolReadyPacket(schoolPacket.dataset.schoolPacket);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render()}});
 }
 (async()=>{
  bind();
