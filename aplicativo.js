@@ -206,19 +206,19 @@ function assessments(d){
   return '<option value="'+clean(c.id)+'"'+(c.label==='3º B'?' selected':'')+'>'+clean(c.label)+' — '+n+' estudantes</option>';
  }).join('');
  const standardPrinting=mode==='live'&&role==='pedagogical_admin'?
-  '<div class="card"><h2>Preparação escolar das avaliações — prontas para entregar</h2>'+
-  '<p>A coordenação ou secretaria prepara e imprime os materiais para cada turma. <strong>As professoras recebem tudo pronto: sem etiquetas, recortes ou colagens.</strong></p>'+
+  '<div class="card"><h2>Nova ficha óptica OMR V2 — pintura dos quadradinhos</h2>'+
+  '<p>A escola imprime as fichas individuais já com QR Code e quatro marcas de alinhamento. A professora <strong>pinta completamente o quadradinho escolhido</strong>, em vez de marcar X. <strong>Estamos na validação piloto: não imprima a turma inteira antes do teste.</strong></p>'+
   '<label for="schoolPacketClassSelect"><strong>Selecione a turma</strong></label>'+
   '<select id="schoolPacketClassSelect" style="display:block;width:100%;max-width:360px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+packetOptions+'</select>'+
   '<div class="buttonrow">'+
-  '<button type="button" class="smallbtn solid" data-school-packet="correction" '+(packetClasses.length?'':'disabled')+'>Imprimir fichas de correção prontas (QR integrado)</button>'+
-  '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa por estudante</button>'+
-  '<button type="button" class="smallbtn" data-school-packet="activities" '+(packetClasses.length?'':'disabled')+'>Imprimir só atividades de LP + Matemática</button>'+
+  '<button type="button" class="smallbtn solid" data-school-packet="pilot" '+(packetClasses.length?'':'disabled')+'>Imprimir 1 ficha piloto pronta (QR individual)</button>'+
+  '<button type="button" class="smallbtn" disabled title="Aguardando teste com ficha impressa e PDF escaneado">Pacote de correção da turma — liberar após validação</button>'+
+  '<button type="button" class="smallbtn" disabled title="Aguardando teste com ficha impressa e PDF escaneado">Avaliação completa — liberar após validação</button>'+
   '</div>'+
   '<label style="display:flex;align-items:center;gap:10px;margin:15px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked style="width:18px;height:18px"> Imprimir somente estudantes sem resultado oficial (evita duplicar fichas já publicadas)</label>'+
-  '<p class="intro-note"><strong>Como funciona:</strong> a opção de correção imprime uma folha A4 por estudante, já com nome, turma, QR exclusivo e todos os quadrinhos de X. A opção completa inclui também as duas páginas de atividades. Nada precisa ser colado nas folhas.</p>'+
-  '<p class="intro-note"><strong>Impressão:</strong> A4, escala 100%, sem ajustar à página. Faça um teste de uma ficha real fotografada antes de imprimir o pacote inteiro. Entregue as folhas organizadas pela turma e preserve os dados pessoais em ambiente escolar.</p>'+
-  '<p class="intro-note"><strong>Depois da aplicação:</strong> a professora marca os X e fotografa somente a ficha de correção. O leitor associa o QR ao cadastro existente. O envio diretamente pelo acesso individual de cada professora é a próxima etapa de implantação.</p>'+
+  '<p class="intro-note"><strong>Como funciona:</strong> o piloto imprime apenas uma folha A4 da turma selecionada, já identificada. Os quadradinhos são preenchidos por completo, e não com X. O QR informa que esta é uma ficha do tipo V2; as fichas com X continuam separadas.</p>'+
+  '<p class="intro-note"><strong>Impressão:</strong> A4, escala 100%, sem ajustar à página. Pinte uma ficha piloto, digitalize no Google Drive e confira o resultado antes de imprimir a turma inteira. Entregue as folhas organizadas pela turma e preserve os dados pessoais em ambiente escolar.</p>'+
+  '<p class="intro-note"><strong>Depois da aplicação:</strong> a professora pinta os quadradinhos e digitaliza somente a ficha de correção. O leitor associa o QR ao cadastro existente. O envio diretamente pelo acesso individual de cada professora é a próxima etapa de implantação.</p>'+
   '</div>':'';
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
 
@@ -258,7 +258,7 @@ function assessments(d){
     <p class="intro-note">Use a confirmação da turma inteira somente se TODOS os nomes e a turma estiverem corretos na lista oficial atual da secretaria. Se houver dúvida, confirme individualmente.</p>
     <div id="rosterReviewFeedback" class="form-message" role="status" aria-live="polite">${clean(rosterReviewMessage)}</div>
     <div class="tablewrap"><table><thead><tr><th>Nº</th><th>Nome conforme lista recebida</th><th>Situação</th><th>Conferência</th></tr></thead><tbody>${tableRows||'<tr><td colspan="4">Selecione uma turma para consultar os registros.</td></tr>'}</tbody></table></div>
-    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Imprimir avaliação completa (${printableCodes} estudantes)</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
+    ${printableCodes>0?`<div class="buttonrow"><button type="button" class="smallbtn solid" data-ficha-class="${clean(selectedRosterClass)}">Visualizar 1 avaliação-piloto OMR V2</button> <button type="button" class="smallbtn" data-guide-class="${clean(selectedRosterClass)}">Roteiro da professora e gabarito</button></div>`:''}
     <p class="intro-note">A escola imprime e entrega as fichas com QR incorporado. A professora apenas aplica, registra os X e fotografa a folha de correção. O envio para o painel exige conferência e autorização institucional.</p></div>`;
 
  } else {
@@ -339,7 +339,7 @@ function openFichas(classroomId,studentId){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
  const c=loaded.classrooms.find(x=>x.id===classroomId);
  const candidates=loaded.students.filter(s=>s.classroom_id===classroomId && s.active && /^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
- const students=studentId?candidates.filter(s=>s.id===studentId):candidates;
+ const students=(studentId?candidates.filter(s=>s.id===studentId):candidates.filter(s=>!loaded.results.some(r=>r.student_id===s.id)).slice(0,1));
  if(!c||!students.length){rosterReviewMessage='Não há estudantes confirmados com QR válido para preparar estas fichas.';render();return;}
  if(!window.LuminaFichas?.printSet){rosterReviewMessage='As fichas ainda não carregaram. Atualize o navegador e tente novamente.';render();return;}
  try{window.LuminaFichas.printSet(students,c)}
@@ -358,8 +358,13 @@ function printSchoolReadyPacket(kind){
   const onlyPending=$('skipPublishedSchoolPacket')?.checked!==false;
   const chosen=onlyPending?students.filter(s=>!publishIds.has(s.id)):students;
   if(!chosen.length){window.alert('Todos os estudantes desta turma já têm resultado oficial. Desmarque o filtro para reimprimir.');return;}
-  if(!onlyPending&&students.some(student=>publishIds.has(student.id))&&!window.confirm('Esta turma já tem avaliação(ões) publicada(s). Deseja mesmo reimprimir todas as fichas?'))return;
-  window.LuminaFichas.printSchoolPacket(chosen,klass,kind);
+  if(kind!=='pilot'){
+   window.alert('Impressão em lote temporariamente bloqueada. Primeiro precisamos validar uma ficha V2 impressa e digitalizada.');
+   return;
+  }
+  const sample=chosen.filter(s=>!publishIds.has(s.id)).slice(0,1);
+  if(!sample.length){window.alert('Não há estudantes sem resultado oficial nesta turma.');return;}
+  window.LuminaFichas.printSchoolPacket(sample,klass,'correction');
  }catch(error){
   window.alert('Não foi possível preparar o material: '+String(error?.message||'erro de impressão'));
  }
@@ -627,10 +632,10 @@ async function confirmImportedReview(id,button){
 function batches(d){
  const admin=role==='pedagogical_admin';
  const savedPilot=pilotStageMessage?notice(clean(pilotStageMessage),'info'):'';
- const safeReadingNotice=notice('<strong>Etapa de validação controlada.</strong> A leitura usa a posição fixa dos 46 quadradinhos calibrada pela grade matemática. Se qualquer referência ou resposta obrigatória não for reconhecida, a ficha permanece bloqueada para conferência. O leitor ainda não está autorizado para processamento em massa sem testes com fichas diferentes.','info');
+ const safeReadingNotice=notice('<strong>Validação do novo padrão OMR V2.</strong> A nova ficha deve ter os quadradinhos completamente pintados e quatro marcas de alinhamento. O QR distingue o formato V2 das antigas fichas com X. O lote geral permanece bloqueado até a conferência do teste impresso e digitalizado.','info');
  const batchList=d.batches.map(b=>`<tr><td>${clean(b.source_filename||'Lote de leitura')}</td><td>${clean(d.classrooms.find(c=>c.id===b.classroom_id)?.label||'—')}</td><td>${clean(b.expected_rows??'—')}</td><td>${chip(b.status)}</td></tr>`).join('');
  return `${savedPilot}${safeReadingNotice}${notice('O leitor V5 funciona localmente. As imagens e os PDFs selecionados não são enviados automaticamente ao Supabase. A publicação oficial só é autorizada pela coordenação após confirmar todas as fichas do lote. Dados de teste não devem ser publicados.','info')}
- <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha fictícia para teste</button> <a href="leitor-v5.html?v=20261111-grade-fixa-pdf5-v16" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
+ <div class="card"><h2>Leitor automático de fichas</h2><p>Digitalização automática: localiza a folha, melhora a leitura do QR ampliando a região necessária, interpreta os X e separa exceções. Aceita fotos JPG/PNG e PDF digitalizado pelo Drive, sem marcação manual de cantos.</p><div class="buttonrow">${admin&&mode==='live'?'<button type="button" class="smallbtn solid" data-embed-reader>Abrir leitor dentro do painel</button>':''}<button type="button" class="smallbtn solid" data-test-x>Gerar ficha OMR V2 fictícia para teste</button> <a href="leitor-v5.html?v=20261111-grade-fixa-pdf5-v16" target="_blank" rel="noopener noreferrer" class="smallbtn solid">Abrir leitor V5 →</a><button class="smallbtn" type="button" data-jump="avaliacoes">Ver resultados oficiais</button></div><p class="intro-note">O leitor local continua em testes com PDFs e imagens de diferentes turmas. Não compartilhe fichas com dados de crianças fora dos canais autorizados.</p><div id="pilotReaderContainer"></div></div>
  ${admin?`<div class="card"><h2>Histórico de lotes da escola</h2><p>Somente a coordenação acompanha fichas publicadas ou ainda em conferência.</p><div class="tablewrap"><table><thead><tr><th>Arquivo</th><th>Turma</th><th>Fichas</th><th>Situação</th></tr></thead><tbody>${batchList||'<tr><td colspan="4">Nenhum lote de teste cadastrado.</td></tr>'}</tbody></table></div>${mode==='live'?`<p class="intro-note">Histórico de fichas desta escola: ${d.importRows.length}; publicadas: ${d.importRows.filter(r=>r.validation_status==='committed').length}; aguardando conferência: ${d.importRows.filter(r=>r.validation_status!=='committed').length}.</p>`:''}</div>`:''}
  ${admin?importedReviewPanel(d):''}
  <div class="card"><h2>Conferência do vínculo QR → matrícula</h2><p>Depois de analisar e consolidar o lote no leitor V5, exporte o CSV. Selecione o arquivo aqui: a coordenação verá se cada código corresponde a uma matrícula autorizada e se existem exceções. Tudo é conferido no próprio navegador, sem upload do arquivo.</p><input id="csvReview" class="filecontrol" type="file" accept=".csv,text/csv"><div id="csvReport" class="report" role="status">Aguardando arquivo CSV.</div><p class="intro-note">Teste agora com o CSV fictício do leitor. Esse QR de teste não pertence a uma criança real e deverá aparecer como “não localizado” — é o comportamento esperado. Para testar fichas reais, faça primeiro um piloto de impressão e fotografia com autorização institucional. Nenhum botão publica resultados. A coordenação poderá registrar um piloto com até dez fichas da mesma turma após a conferência, aguardando validação pedagógica.</p></div>`;
