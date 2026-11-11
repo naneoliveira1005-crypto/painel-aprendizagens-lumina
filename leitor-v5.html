@@ -7,13 +7,14 @@
 </style>
 <script src="jsqr-fallback.js"></script>
 <script src="leitor-grade-fixa.js?v=20261111-pdf5-v1"></script>
+<script src="leitor-omr-v2.js?v=20261111-omr-pintado-v1"></script>
 <script src="auto-a4.js?v=20261109-document-scan-v6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
-<header class="pagehead"><div class="brand">Lumina • Assessoria e Consultoria Educacional</div><h1>Painel de Aprendizagens</h1><p>Leitura de fichas em lote · Modelo fixo 2026 · Validação protegida</p></header>
+<header class="pagehead"><div class="brand">Lumina • Assessoria e Consultoria Educacional</div><h1>Painel de Aprendizagens</h1><p>Leitura de fichas · X anterior ou preenchimento OMR V2 · validação protegida</p></header>
 <main class="wrap">
-<div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão localiza a folha e utiliza um modelo fixo de 46 quadradinhos calibrados pela grade M1–M7. Se a grade não for confirmada, a ficha fica em revisão. Nenhuma resposta é aceita por simples aproximação. As fichas que não puderem ser identificadas com segurança seguem para revisão. A proporção da foto não é critério de reprovação: se os X foram identificados, é possível conferir somente o código impresso abaixo do QR, preservando as marcações.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
+<div class="note"><b>Versão de teste local — sem gravação no banco.</b> Esta versão reconhece as fichas novas OMR V2 por quatro marcas de alinhamento e pelo interior dos quadradinhos pintados. Fichas antigas com X são tratadas separadamente. Se a grade não for confirmada, a ficha fica em revisão. Nenhuma resposta é aceita por simples aproximação. As fichas que não puderem ser identificadas com segurança seguem para revisão. A proporção da foto não é critério de reprovação: se os X foram identificados, é possível conferir somente o código impresso abaixo do QR, preservando as marcações.  Esta ferramenta analisa fichas no seu próprio navegador. Não envia imagens, códigos ou resultados à internet ou ao Supabase. Use um computador confiável; não compartilhe imagens ou capturas que exponham nomes de estudantes. Valide o resultado antes de utilizá-lo oficialmente. O processamento dos PDFs depende da biblioteca PDF.js carregada pela internet. O QR é lido no próprio navegador, com método nativo ou alternativa local; se não for possível reconhecer o código, a ficha segue para conferência.</div>
 <div class="grid">
 <section class="panel"><h2>1. Carregar as fichas</h2><p class="help">Selecione várias fotos (JPG/PNG) ou PDFs. Clique em <strong>Analisar lote inteiro</strong>: cada foto é localizada, enquadrada e corrigida automaticamente, sem marcar os cantos. Uma fotografia fora da proporção A4 não é rejeitada por isso. Apenas a identificação e as marcações incertas precisam de conferência.</p><input type="file" id="files" multiple accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"/><div class="buttons"><button id="analyze" disabled>▶ Analisar lote inteiro</button><button id="clear" class="alt">Limpar sessão</button></div><p class="message" id="message">Aguardando seleção de arquivos.</p><progress max="100" value="0" id="progress" aria-label="Progresso"></progress><p class="help" id="progressText">Nenhuma ficha analisada.</p></section>
 <section class="panel"><h2>2. Resultado do lote</h2><p class="help">As fichas com QR ausente, marcação dupla, marcação obrigatória vazia ou identificação repetida são separadas automaticamente.</p><div class="buttons"><button id="consolidate" disabled>✓ Consolidar fichas válidas</button><button id="csv" class="alt" disabled>⬇ Exportar CSV validado</button><button id="handoff" class="alt" disabled>Enviar lote para o Painel da Lumina</button></div><p class="message" id="exportInfo">Nenhum resultado consolidado nesta sessão.</p><p class="help">Consolidar, nesta versão, significa preparar o arquivo de teste para conferência. Não grava no banco.</p></section>
@@ -69,6 +70,12 @@ function readableIssue(key){
 function collectErrors(entry){
  const errors=[];
  if(!localSafeCode(entry.code||''))errors.push('QR não identificado');
+ if(entry.formVersion==='FICHA-V2'&&entry.template!=='FICHA-V2')
+  errors.push('Ficha nova com QR V2: os quatro marcos de alinhamento não foram confirmados');
+ if(entry.template==='FICHA-V2'&&entry.formVersion!=='FICHA-V2')
+  errors.push('QR não confirma o formato V2; não publicar');
+ if(entry.formVersion!=='FICHA-V1'&&entry.formVersion!=='FICHA-V2'&&entry.code)
+  errors.push('Versão da ficha não identificada pelo QR');
  for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': não foi possível confirmar um único X');}
  if(entry.shapeWarning)errors.push('Imagem não enquadrada (confira QR e X)');
  if(entry.alignmentWarning)errors.push('Alinhamento dos quadrinhos precisa de revisão');
@@ -494,6 +501,20 @@ function corroborateMath(reading,all){
 }
 
 function getAnswers(canvas){
+ // OMR V2 utiliza quatro marcos de registro e interior PINTADO.
+ // O leitor antigo de X permanece restrito à FICHA-V1.
+ let omr=null;
+ try{omr=window.LuminaOMRv2?.scan?.(canvas)||null;}
+ catch(error){console.warn('OMR V2 indisponível:',error?.message);}
+ if(omr?.template==='FICHA-V2'){
+  return {answers:omr.answers||{},scores:omr.scores||{},aligned:!!omr.aligned,
+   template:'FICHA-V2',align:{M:28,H:5,L:7,T:6},
+   candidates:omr.fieldCount||0,thresholds:{H:.58,L:.58},
+   method:'Preenchimento sólido OMR V2 por quatro referências',
+   details:{reason:omr.reason,uncertain:omr.uncertain,markers:omr.anchors?.length||0},
+   mathCheck:omr.aligned?{method:'OMR por preenchimento sólido',anchors:4,disagreements:[]}:null};
+ }
+
  // Leitura por modelo físico único de 2026, calibrando os 46 quadradinhos
  // a partir das 26–28 referências da grade M1–M7.
  // Dados não podem ser aceitos oficialmente a partir de inferência livre.
@@ -557,7 +578,8 @@ function markSummary(entry){
  }
  return 'Quadrinhos localizados: '+JSON.stringify(entry.align||{})+'\nLimite por contraste para hipótese de escrita: '+Math.round(100*(entry.thresholds?.H||MARK_THRESHOLD))+'%\nPercentual de tinta dentro dos quadrinhos (diagnóstico, não nota):\n'+lines.join('\n');
 }
-function qrPayloadToId(v){const m=/^SONIA26\|(SON-26-[A-F0-9]{12})\|FICHA-V1$/.exec(v||'');return m?m[1]:null}
+function qrPayloadToId(v){const m=/^SONIA26\|(SON-26-[A-F0-9]{12})\|FICHA-V[12]$/.exec(v||'');return m?m[1]:null}
+function qrPayloadVersion(v){const m=/^SONIA26\|SON-26-[A-F0-9]{12}\|(FICHA-V[12])$/.exec(v||'');return m?m[1]:''}
 async function readQr(canvas){
  // Scanner documental: QR em tamanho original e em RECORTES AMPLIADOS.
  // Fotos 9:16 normalmente têm papel A4 no centro, e não podem ser encolhidas
@@ -591,7 +613,7 @@ async function readQr(canvas){
    try{
     const hits=await detector.detect(part);
     const matches=[...new Set(hits.map(h=>qrPayloadToId(h.rawValue)).filter(Boolean))];
-    if(matches.length===1)return matches[0];
+    if(matches.length===1){const hit=hits.find(h=>qrPayloadToId(h.rawValue)===matches[0]);canvas.__luminaFormVersion=qrPayloadVersion(hit?.rawValue);return matches[0];}
     if(matches.length>1)return ''; // Foto com mais de uma ficha: revisar.
    }catch(_){}
   }
@@ -602,7 +624,7 @@ async function readQr(canvas){
     const hit=window.jsQR(pixels.data,part.width,part.height,
       {inversionAttempts:i===regions.length-1?'dontInvert':'attemptBoth'});
     const valid=hit?qrPayloadToId(hit.data):null;
-    if(valid)return valid;
+    if(valid){canvas.__luminaFormVersion=qrPayloadVersion(hit.data);return valid;}
    }catch(_){}
   }
  }
@@ -760,6 +782,8 @@ async function analyzeOne(entry){
  entry.shapeWarning=!winner.pageLocated&&
   Math.abs(original.width/original.height-PAGE[0]/PAGE[1])>.06;
  entry.code=winner.code;
+ entry.formVersion=winner.canvas.__luminaFormVersion||original.__luminaFormVersion||'';
+ entry.template=winner.reading.template||'FICHA-V1';
  recalcState(entry);
  if(entry.state==='review'&&entry.kind==='img'&&!winner.pageLocated){
   entry.issues.push('Papel não localizado com confiança; a ficha permanece em revisão');
