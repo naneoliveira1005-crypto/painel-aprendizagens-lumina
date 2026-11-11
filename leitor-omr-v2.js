@@ -150,8 +150,12 @@ function scanGray(gray,W,H){
  for(let i=1;i<=7;i++)answers['M'+i]=choose(['A','P','N','NO'].map(c=>'M'+i+'_'+c));
  const valid=!!answers.H&&!!answers.T1&&!!answers.T2&&Array.from({length:7},(_,i)=>!!answers['M'+(i+1)]).every(Boolean);
  const unsure=Object.keys(answers).filter(k=>k!=='L'&&!answers[k]);
- return {aligned:valid,answers,scores:measured,anchors:corners,reason:valid?'':'uncertain_marks',
-  uncertain:unsure,template:'FICHA-V2',fieldCount:Object.keys(fields).length};
+ // "aligned" indica geometria da ficha, não que todas as respostas foram pintadas.
+ // Uma opção incerta deve gerar SOMENTE a pendência daquela opção.
+ // "complete" fica separado para não transformar uma dúvida em falha de enquadramento.
+ return {aligned:true,complete:valid,answers,scores:measured,anchors:corners,
+  reason:valid?'':'uncertain_marks',uncertain:unsure,
+  template:'FICHA-V2',fieldCount:Object.keys(fields).length};
 }
 function scan(canvas){
  if(!canvas||!canvas.width||!canvas.height)return {aligned:false,reason:'no_canvas'};
