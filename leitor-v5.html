@@ -26,7 +26,7 @@
 <button id="applyCrop" type="button" class="hide">Aplicar enquadramento e reler</button>
 </div>
 <p class="crop-help hide" id="cropHelp" role="status" aria-live="polite">Clique nos quatro cantos da FOLHA de papel na foto, nesta ordem: 1º superior esquerdo; 2º superior direito; 3º inferior direito; 4º inferior esquerdo. Clique na borda do papel, não no quadradinho preto.</p><p class="help">Confira a foto, o QR e as marcações. <strong>O leitor tenta recortar a folha A4 automaticamente durante a análise. Se houver pendência, verifique o motivo e a qualidade da foto antes de qualquer revisão manual.</strong> Se houver sombra, reflexo ou foto inclinada, refaça de cima, com a folha inteira e boa iluminação. Não confirme manualmente marcações que não consiga ler.</p></div><div><p class="help" id="editTitle"></p><div class="field"><label for="studentCode">Código do QR (ou código fictício para teste)</label><input id="studentCode" placeholder="SON-26-XXXXXXXXXXXX ou TESTE-0001"/><div class="hint">Se a câmera não conseguir ler o QR, digite exatamente o código SON-26-... impresso abaixo dele, conferindo também o nome e a turma. Os X já identificados são preservados. A vinculação será conferida no painel protegido.</div></div><div id="selections"></div><div class="field"><label>Diagnóstico de leitura automática</label><div id="markDiagnostics" class="hint" style="white-space:pre-wrap;background:#f3f8f5;border:1px solid #dbe6e1;padding:11px;border-radius:8px">Sem análise.</div></div><div class="buttons"><button id="saveReview" class="alt">Confirmar código e revisão (não publica)</button><button id="undoReview" class="alt">Desfazer revisão e reler automaticamente</button><button id="closeReview" class="alt">Fechar</button></div><p id="reviewMessage" class="message"></p></div></div></section>
-<p class="footer">Projeto escolar Lumina • Escola Municipal Sônia Maria Pereira do Nascimento. Protótipo de validação: uso sem identificação de crianças. A leitura QR usa BarcodeDetector ou a biblioteca jsQR local. O contraste do campo de hipótese de escrita foi ajustado com base em variações de resolução das sete páginas do PDF de teste do 2º A e nas três fichas fictícias. A decisão automática deve ser verificada por amostragem antes de qualquer utilização oficial. O PDF é carregado usando biblioteca PDF.js; nenhum resultado é enviado ao Supabase.</p>
+<p class="footer">Projeto escolar Lumina • Escola Municipal Sônia Maria Pereira do Nascimento. Protótipo de validação: uso sem identificação de crianças. A leitura QR usa BarcodeDetector ou a biblioteca jsQR local. A Matemática passa por uma segunda leitura independente dos centros da grade, e divergências são encaminhadas à conferência. O contraste do campo de hipótese de escrita foi ajustado com base em variações de resolução das sete páginas do PDF de teste do 2º A e nas três fichas fictícias. A decisão automática deve ser verificada por amostragem antes de qualquer utilização oficial. O PDF é carregado usando biblioteca PDF.js; nenhum resultado é enviado ao Supabase.</p>
 </main>
 <script>
 'use strict';
@@ -519,6 +519,13 @@ function getAnswers(canvas){
 function markSummary(entry){
  if(!entry.scores)return 'Resultado editado manualmente. Intensidades não disponíveis.';
  const lines=[];
+ if(entry.mathCheck){
+  const conflicts=entry.mathCheck.disagreements||[];
+  lines.push('Verificação complementar M1–M7: '+(conflicts.length?'CONFERÊNCIA NECESSÁRIA ('+conflicts.join(', ')+')':'grade confirmada por leitura independente')+
+   ' · quadradinhos de referência: '+entry.mathCheck.anchors);
+ }else{
+  lines.push('Verificação complementar da grade: não conclusiva; revisão obrigatória');
+ }
  for(const [name,key,options] of GROUPS){
   const scores=options.map(k=>[k,entry.scores[k]||0]);
   lines.push(name+': '+scores.map(([k,s])=>{
