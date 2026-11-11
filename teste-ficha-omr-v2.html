@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#163e32">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Lumina · Painel de Aprendizagens</title>
+<link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="graficos-avaliacao.css?v=20261109-graficos-v1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script>
+<script src="qrcode-generator.js" defer></script>
+<script src="fichas-omr-piloto-isolado-v27.js" defer></script>
+<script src="aplicativo-omr-piloto-isolado-v27.js" defer></script>
+<meta name="robots" content="noindex,nofollow"><meta name="description" content="Acesso piloto à ficha óptica OMR V2; avaliação escolar protegida.">
+</head>
+<body>
+<header class="masthead">
+ <a class="brand" href="index.html" aria-label="Painel de Aprendizagens Lumina">
+   <span class="mark" aria-hidden="true">L<span class="gold-dot">.</span></span>
+   <span><strong>LUMINA</strong><small>Assessoria e Consultoria Educacional</small></span>
+ </a>
+ <span class="schooltitle">PAINEL DE APRENDIZAGENS <span class="schooltag">Escola Sônia Maria · PILOTO OMR V2</span></span>
+ <button id="btnLogout" class="ghost white hidden" type="button">Sair <span aria-hidden="true">↗</span></button>
+</header>
+<main>
+<section id="loginView" class="entry">
+  <div class="intro">
+    <div class="eyebrow"><span class="tinyline"></span> ACOMPANHAMENTO PEDAGÓGICO</div>
+    <h1>Aprendizagens que<br><em>ganham visibilidade.</em></h1>
+    <p>Um espaço para ler evidências, acompanhar percursos e organizar intervenções pedagógicas com responsabilidade e cuidado.</p>
+    <div class="intro-stats"><div><b>1º ao 5º ano</b><span>Anos Iniciais</span></div><div><b>16 turmas</b><span>Estrutura preparada</span></div></div>
+    <div class="privacy-note">Os dados individuais dos estudantes são restritos a profissionais autorizados. Nenhum resultado fica público nesta página.</div>
+  </div>
+  <div class="login-card">
+    <div class="login-icon" aria-hidden="true">⌁</div>
+    <div class="overline">ACESSO INSTITUCIONAL</div>
+    <h2>Entrar no painel</h2>
+    <p>O acesso é individual e depende de convite e liberação da gestão pedagógica.</p>
+    <form id="loginForm" autocomplete="on">
+      <label for="email">E-mail profissional</label>
+      <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="seuemail@exemplo.com" required>
+      <label for="password">Senha individual</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="Sua senha" minlength="8" required>
+      <button class="primary" id="btnLogin" type="submit">Entrar com segurança <span aria-hidden="true">→</span></button>
+      <div role="status" class="form-message" id="loginMessage" aria-live="polite"></div>
+    </form>
+    <button type="button" id="btnForgotPassword" class="textbtn" style="margin-top:13px">Esqueci minha senha</button>
+    <form id="passwordRecoveryForm" class="hidden" autocomplete="on">
+      <h3>Recuperar acesso</h3>
+      <p>Informe o e-mail profissional autorizado. Você receberá um link para definir uma nova senha.</p>
+      <label for="recoveryEmail">E-mail profissional</label>
+      <input id="recoveryEmail" type="email" autocomplete="email" required>
+      <button type="submit" id="btnSendRecovery" class="primary">Enviar link de recuperação</button>
+      <button type="button" id="btnBackFromRecovery" class="textbtn" style="margin-top:13px">Voltar ao login</button>
+      <div id="recoveryMessage" class="form-message" role="status" aria-live="polite"></div>
+    </form>
+    <form id="passwordSetupForm" class="hidden">
+      <h3>Definir senha individual</h3>
+      <p>Este acesso é pessoal. Escolha uma senha exclusiva, que não será exibida à coordenação.</p>
+      <label for="newPassword">Nova senha</label>
+      <input id="newPassword" type="password" autocomplete="new-password" minlength="12" required>
+      <label for="newPasswordConfirm">Confirmar senha</label>
+      <input id="newPasswordConfirm" type="password" autocomplete="new-password" minlength="12" required>
+      <button type="submit" id="btnSavePassword" class="primary">Salvar minha senha</button>
+      <div id="setupPasswordMessage" class="form-message" role="status" aria-live="polite"></div>
+    </form>
+    <div class="login-divider"><span>ou</span></div>
+    <button id="btnDemo" type="button" class="outline wide">Visualizar a demonstração <span aria-hidden="true">↗</span></button>
+    <p class="mininote">A demonstração usa somente dados fictícios. Não permite consultar, alterar nem importar registros reais.</p>
+  </div>
+</section>
+<section id="appView" class="app hidden">
+ <aside class="sidebar">
+   <div class="sidebar-label">ÁREA DE TRABALHO</div>
+   <nav aria-label="Seções do painel">
+     <button class="nav-btn current" type="button" data-page="visao"><span>▦</span> Visão geral</button>
+     <button class="nav-btn" type="button" data-page="turmas"><span>▤</span> Turmas</button>
+     <button class="nav-btn" type="button" data-page="avaliacoes"><span>◫</span> Avaliações</button>
+     <button class="nav-btn" type="button" data-page="lotes"><span>▣</span> Leitura de fichas</button>
+     <button class="nav-btn" type="button" data-page="equipe"><span>♙</span> Equipe e acessos</button>
+   </nav>
+   <div class="sidebar-spacer"></div>
+   <div class="side-foot">Projeto institucional Lumina <span>•</span> 2026<br><small>Escola Municipal Sônia Maria Pereira do Nascimento</small></div>
+ </aside>
+ <div class="workspace">
+   <div id="modeBanner" class="demo-banner hidden" role="status"></div>
+   <div class="topline"><span id="roleLabel">Acompanhamento pedagógico</span><div class="control-group"><label id="demoRoleLabel" class="hidden">Simular perfil <select id="demoRole"><option value="pedagogical_admin">Coordenação</option><option value="teacher">Professora</option><option value="director">Direção</option></select></label><button id="btnRefresh" class="textbtn" type="button">↻ Atualizar</button></div></div>
+   <h1 class="page-title" id="pageTitle">Visão geral</h1>
+   <p class="page-subtitle" id="pageSubtitle">Acompanhamento da escola</p>
+   <div id="content" aria-live="polite"></div>
+   <footer class="sitefooter">LUMINA <span>·</span> Painel de Aprendizagens <span>·</span> Acesso autorizado e dados protegidos</footer>
+ </div>
+</section>
+</main>
+</body>
+</html>
