@@ -382,46 +382,6 @@ function getAnswersFromMathAnchors(all){
   answers[key]=ranked[0]?.rate>=thresholds[key]&&
     ranked[0].rate-(ranked[1]?.rate||0)>=.18?ranked[0].key:'';
  }
-
- // Recuperação conservadora de uma única marca de Matemática cujo X toca
- // a borda da caixa e, portanto, impede seu contorno de ser reconhecido.
- // Usa a régua matemática já alinhada; nunca altera outra resposta.
- // Se as quatro opções forem semelhantes, deixa a ficha para conferência.
- const unresolvedMath=M.map((keys,i)=>({key:'M'+(i+1),keys})).filter(g=>!g.keys.includes(answers[g.key]));
- const nonMathReady=GROUPS.filter(([,key])=>key!=='L'&&!/^M[1-7]$/.test(key))
-   .every(([,key,opts])=>opts.includes(answers[key]));
- if(unresolvedMath.length===1&&nonMathReady&&unmatched.length<=2){
-   const target=unresolvedMath[0],possible=[];
-   const locations=details.M?.locations||{};
-   for(const key of target.keys){
-     const point=locations[key];
-     if(!point){possible.length=0;break;}
-     const anchor=point.found||{x:point.target.x+(details.M?.dx||0),
-       y:point.target.y+(details.M?.dy||0)};
-     const boxW=expectedWidth,boxH=expectedHeight;
-     const margin=Math.max(2,Math.floor(Math.min(boxW,boxH)*.20));
-     const sample=(xx,yy)=>{
-       let black=0,total=0;
-       for(let y=Math.round(yy)+margin;y<Math.round(yy+boxH)-margin;y++)
-         for(let x=Math.round(xx)+margin;x<Math.round(xx+boxW)-margin;x++)
-           if(x>=0&&x<w&&y>=0&&y<h){black+=b[y*w+x];total++;}
-       return total?black/total:0;
-     };
-     // Pequenas variações de posicionamento que não alcançam letras vizinhas.
-     let best=0;
-     for(let oy=-2;oy<=2;oy++)
-       for(let ox=-2;ox<=2;ox++)best=Math.max(best,sample(anchor.x+ox,anchor.y+oy));
-     possible.push({key,rate:best});
-   }
-   possible.sort((a,b)=>b.rate-a.rate);
-   if(possible.length===4&&possible[0].rate>=.55&&
-      possible[0].rate-(possible[1]?.rate||0)>=.25){
-     answers[target.key]=possible[0].key;
-     thresholds[target.key]=.55;
-     details.M.rescue={field:target.key,criterion:'consensus from calibrated math grid',
-       margin:Math.round((possible[0].rate-possible[1].rate)*100)/100};
-   }
- }
  const blankBaseline=median(L.map(k=>sampled[k]||0).filter(v=>v<.25));
  thresholds.L=Math.max(.27,blankBaseline+.14);
  answers.L=L.filter(k=>(sampled[k]||0)>=thresholds.L);
