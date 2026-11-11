@@ -589,17 +589,30 @@ function checkReaderCSV(csvText, authorizedStudents=[], classrooms=[], checkRost
  return {tallies,rows,checkedRoster:checkRoster};
 }
 function reviewCSV(file,options={}){
- const area=$('csvReport');pilotCandidate=null;if(!area||!file)return;
- if(file.size>2_000_000){area.textContent='Arquivo muito grande. Separe o lote em arquivos CSV menores.';return;}
+ const area=$('csvReport');pilotCandidate=null;
+ if(!area||!file){
+  if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Arquivo não recebido pela conferência'});
+  return;
+ }
+ if(file.size>2_000_000){
+  area.textContent='Arquivo muito grande. Separe o lote em arquivos CSV menores. NÃO SALVO.';
+  if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Arquivo muito grande'});
+  return;
+ }
  const startedMode=mode,startedUser=profile?.user_id;
  area.textContent='Conferindo o CSV no navegador...';
  const reader=new FileReader();
  reader.onload=()=>{
-   if(mode!==startedMode||profile?.user_id!==startedUser)return; // Evita expor conferência de sessão anterior.
+   if(mode!==startedMode||profile?.user_id!==startedUser){
+     if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Sessão institucional alterada'});
+     return;
+   } // Evita expor conferência de sessão anterior.
    const liveAdmin=mode==='live'&&role==='pedagogical_admin'&&!!profile;
    const students=liveAdmin?loaded.students:[];
    if(liveAdmin&&(!students.length||!loaded.classrooms.length)){
-     area.textContent='Não foi possível conferir o cadastro protegido. Clique em Atualizar e selecione o CSV novamente.';return;
+     area.textContent='Não foi possível conferir o cadastro protegido. O lote NÃO FOI SALVO. Clique em Atualizar e tente novamente.';
+     if(options.autoStage)notifyPilotTransfer(options.replyTo,{saved:false,reason:'Cadastro institucional não disponível'});
+     return;
    }
    try{
      const outcome=checkReaderCSV(String(reader.result||''),students,liveAdmin?loaded.classrooms:[],liveAdmin);
@@ -806,7 +819,7 @@ async function enterLive(){
  if(!p||!['teacher','pedagogical_admin','director'].includes(p.role)){
   await api.auth.signOut();throw new Error('Sua conta ainda não foi liberada pela coordenação. Nenhum dado escolar foi exibido.');
  }
- profile=p;role=p.role;mode='live';currentPage='visao';pilotCandidate=null;pilotStageMessage='';
+ profile=p;role=p.role;mode='live';currentPage='visao';pilotCandidate=null;transferDraft=null;pilotStageMessage='';
  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');
  // Exibe imediatamente a estrutura protegida, mesmo se alguma consulta do banco demorar.
  render();
