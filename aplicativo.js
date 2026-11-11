@@ -51,7 +51,7 @@ function render(){
   console.error('Falha ao abrir a seção',currentPage,err);
   pageMarkup='<div class="card"><h2>Não foi possível carregar esta seção</h2>'+
    '<p>O conteúdo anterior foi ocultado para evitar confusão. Atualize a página.</p>'+
-   '<p>Para analisar uma ficha sem alterar resultados, <a href="leitor-v5.html?v=20261111-omr-alinhamento-real-v18" target="_blank" rel="noopener noreferrer">abrir o leitor de PDF ou foto</a>.</p></div>';
+   '<p>Para analisar uma ficha sem alterar resultados, <a href="leitor-v5.html?v=20261111-salvamento-confirmado-v19" target="_blank" rel="noopener noreferrer">abrir o leitor de PDF ou foto</a>.</p></div>';
  }
  $('content').innerHTML=pageMarkup;
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
@@ -499,7 +499,7 @@ async function confirmImportedReview(id,button){
 
 function batches(d){
  // O envio deve ser a primeira ação na aba de leitura, sem botão escondido.
- const readerUrl='leitor-v5.html?v=20261111-omr-alinhamento-real-v18';
+ const readerUrl='leitor-v5.html?v=20261111-salvamento-confirmado-v19';
  const reader=mode==='live'&&role==='pedagogical_admin'?
   '<div class="card" id="readerTop"><h2>1. Enviar ficha preenchida</h2>'+
   '<div id="stageSavedBanner" class="notice info" role="status">'+
@@ -626,7 +626,7 @@ function reviewCSV(file,options={}){
      area.appendChild(stats);
      if(liveAdmin){
        const banner=document.createElement('p');
-       banner.textContent='O cruzamento usa as matrículas autorizadas do banco. Não envia o CSV nem publica resultados. “Apta” significa apenas que QR e campos técnicos foram encontrados: a professora ainda deve validar o conteúdo pedagógico.';
+       banner.textContent='O cruzamento usa as matrículas autorizadas do banco. O lote só é considerado salvo após confirmação de gravação. Nenhuma avaliação é publicada automaticamente. “Apta” significa apenas que QR e campos técnicos foram encontrados: a professora ainda deve validar o conteúdo pedagógico.';
        area.appendChild(banner);
      }else{
        const info=document.createElement('p');info.textContent='Entre com a conta da coordenação para conferir a matrícula ligada a cada QR. Nenhum cadastro real é mostrado aqui.';area.appendChild(info);
