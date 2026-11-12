@@ -87,3 +87,16 @@ Solicitação: organizar automaticamente os acessos e vínculos, sem cadastro ma
 - Criado log protegido `app_private.teacher_activation_log` e trigger `lumina_log_teacher_activation` que registra transição `pending/invited→active` com auth_user_id confirmado. Só serviço administrativo pode ler o log; sem acesso anônimo ou dos usuários docentes.
 - Criada automação `Avisar ativações das professoras`, checagem horária condicional em America/Bahia. Ao detectar eventos ainda não avisados, conferir `staff_profiles`, `staff_classrooms` e as turmas e enviar aviso à usuária. Atualizar `notified_at` para evitar alertas duplicados. Não mencionar nomes de alunos nas notificações.
 - **Próxima validação real**: uma das professoras com e-mail, por exemplo Ana Paula ou Ana Rita, solicitar link no painel e confirmar recebimento no e-mail. Verificar SMTP real e redirect URL do Supabase; o envio para endereços externos pode exigir SMTP próprio, conforme documentação. Só após teste real afirmar acesso efetivo à plataforma.
+
+
+## Problema de login móvel e domínio institucional (11/11/2026 — versão v35)
+
+A professora Ana Rita recebeu o e-mail de link mágico e, ao clicar, viu uma página vazia do Supabase no navegador do celular. No banco, `auth.users` já apresentava e-mail confirmado e login registrado, **mas `staff_directory.status='pending'`**, sem `staff_profiles` nem vínculos de `staff_classrooms`. Portanto, não afirmar que ela já consegue enviar fichas.
+
+Teste seguro de ativação com transação **ROLLBACK** confirmou que a função `public.lumina_activate_registered_teacher()` vincula **exatamente 4º A e 4º C**, sem contas duplicadas. Estado persistente não foi modificado.
+
+Correção no frontend (`aplicativo.js?v=20261111-corrigir-retorno-login-v35`): `emailRedirectTo` aponta para a **raiz** do site via `new URL('./', window.location.href).href`, e o callback `SIGNED_IN` trata chegada tardia da sessão no mobile com chamada assíncrona fora do callback e proteção contra duplicidade. Tratamento explícito de limite de e-mails 429. GitHub Pages concluiu deploy v35 com sucesso.
+
+**Pendente externo:** verificar em Supabase → Authentication → URL Configuration o Site URL e redirect allowlist da URL pública `https://naneoliveira1005-crypto.github.io/painel-aprendizagens-lumina/` (incluir também `.../index.html` se aplicável). O conector Supabase atual não disponibiliza edição desse ajuste de Auth; precisa painel administrativo. A tela vazia no domínio Supabase é compatível com URL de retorno inadequada; não confirmar causa única sem verificar configuração. Log Auth teve ao menos um 429 `over_email_send_rate_limit`; não orientar repetição de links sem intervalo. Antes de liberar vários acessos, configurar SMTP de uso real se necessário.
+
+**Branding solicitado:** a coordenação quer que o endereço público não exiba `naneoliveira1005-crypto`, e prefere identidade de Priscila associada à Lumina. A conta atual de coordenação está cadastrada com `priscilapossi3@gmail.com` (não `gamail.com`). O identificador `naneoliveira...` é o usuário do GitHub na URL, **não** o e-mail de acesso; para alterar a URL sem alterar cadastros, usar domínio próprio da Lumina sob controle DNS, com configuração GitHub Pages e posterior atualização da allowlist do Supabase Auth. Não transferir repositório nem modificar DNS sem instruções e acesso ao domínio.
