@@ -869,9 +869,23 @@ function parseDelimited(text,delimiter){
 async function enterLive(){
  if(!api)throw new Error('O serviço de autenticação não carregou. Verifique a conexão com a internet.');
  const {data:{user},error:userErr}=await api.auth.getUser();if(userErr||!user)throw new Error('Sessão não autorizada.');
- const {data:p,error:pErr}=await api.from('staff_profiles').select('user_id,school_id,display_name,role,active').eq('user_id',user.id).eq('active',true).maybeSingle();
+ let {data:p,error:pErr}=await api.from('staff_profiles').select('user_id,school_id,display_name,role,active').eq('user_id',user.id).eq('active',true).maybeSingle();
  if(pErr)throw new Error('Não foi possível conferir as permissões do usuário.');
- if(!p||!['teacher','pedagogical_admin','director'].includes(p.role)){
+ // Primeiro acesso por link: a professora confirma seu próprio e-mail e o
+ // banco vincula automaticamente apenas as turmas previamente cadastradas.
+ if(!p){
+  const {error:activationError}=await api.rpc('lumina_activate_registered_teacher');
+  if(activationError){
+   await api.auth.signOut();
+   throw new Error('Não foi possível liberar seu acesso. Confira se informou o e-mail cadastrado na escola ou procure a coordenação.');
+  }
+  const {data:activatedProfile,error:profileError}=await api.from('staff_profiles')
+    .select('user_id,school_id,display_name,role,active')
+    .eq('user_id',user.id).eq('active',true).maybeSingle();
+  if(profileError||!activatedProfile)throw new Error('O acesso foi confirmado, mas não foi possível carregar suas turmas. Atualize a página.');
+  p=activatedProfile;
+ }
+ if(!['teacher','pedagogical_admin','director'].includes(p.role)){
   await api.auth.signOut();throw new Error('Sua conta ainda não foi liberada pela coordenação. Nenhum dado escolar foi exibido.');
  }
  profile=p;role=p.role;mode='live';currentPage='visao';pilotCandidate=null;transferDraft=null;pilotStageMessage='';
@@ -942,6 +956,28 @@ function bind(){
  if(e.target?.id==='schoolPacketClassSelect'||e.target?.id==='skipPublishedSchoolPacket')
   updatePacketStudents();
 });
+ $('teacherMagicForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const button=$('btnTeacherMagic'),msg=$('teacherMagicMessage');
+  button.disabled=true;msg.textContent='Solicitando link de acesso...';
+  try{
+    if(!api)throw new Error('Conexão indisponível. Tente novamente.');
+    const email=$('teacherMagicEmail').value.trim().toLowerCase();
+    if(!email||!email.includes('@'))throw new Error('Digite seu e-mail corretamente.');
+    const {error}=await api.auth.signInWithOtp({
+      email,
+      options:{
+        emailRedirectTo:location.origin+location.pathname,
+        shouldCreateUser:true
+      }
+    });
+    if(error)throw error;
+    msg.textContent='Confira sua caixa de entrada e o lixo eletrônico. Abra o e-mail e clique no link para entrar. Não precisa de senha.';
+  }catch(error){
+    console.warn('Não foi possível solicitar o link docente',error?.message);
+    msg.textContent='Não foi possível enviar o link agora. Confira o e-mail e tente novamente mais tarde. Se continuar, avise a coordenação.';
+  }finally{button.disabled=false;}
+ });
  $('loginForm').addEventListener('submit',async(e)=>{e.preventDefault();const btn=$('btnLogin'),msg=$('loginMessage');btn.disabled=true;msg.textContent='Verificando credenciais...';try{
   if(!api)throw new Error('Serviço temporariamente indisponível. Abra este arquivo com conexão à internet.');
   const email=$('email').value.trim(),password=$('password').value;
