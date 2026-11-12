@@ -983,7 +983,10 @@ function bind(){
     msg.textContent='Link solicitado. Abra o e-mail recebido e toque em Entrar. No celular, use Abrir no Chrome se o Gmail abrir numa janela interna. O link pode ser usado uma vez.';
   }catch(error){
     console.warn('Não foi possível solicitar o link docente',error?.message);
-    msg.textContent='Não foi possível enviar o link agora. Confira o e-mail e tente novamente mais tarde. Se continuar, avise a coordenação.';
+    const rateLimited=error?.status===429||error?.code==='over_email_send_rate_limit';
+    msg.textContent=rateLimited?
+      'O limite de envio de e-mails foi atingido. Não solicite vários links seguidos. Avise a coordenação e tente novamente após a liberação do serviço.':
+      'Não foi possível enviar o link agora. Confira o e-mail e tente novamente mais tarde. Se continuar, avise a coordenação.';
   }finally{button.disabled=false;}
  });
  $('loginForm').addEventListener('submit',async(e)=>{e.preventDefault();const btn=$('btnLogin'),msg=$('loginMessage');btn.disabled=true;msg.textContent='Verificando credenciais...';try{
