@@ -11,6 +11,7 @@ const shiftLabel = {matutino:'Matutino',vespertino:'Vespertino',integral:'Integr
 const roleName = {teacher:'Professora',pedagogical_admin:'Coordenação pedagógica',director:'Direção'};
 const plannedName = {teacher:'Professora',pedagogical_admin:'Coordenadora',director:'Diretora'};
 let api=null;
+let loginResolving=null;
 let mode='guest', currentPage='visao', role='pedagogical_admin', profile=null;
 let selectedRosterClass='';
 let rosterReviewMessage='';
@@ -866,6 +867,11 @@ function parseDelimited(text,delimiter){
  else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(field);if(row.some(v=>v.trim()))rows.push(row);row=[];field=''}else field+=ch;}
  row.push(field);if(row.some(v=>v.trim()))rows.push(row);return rows;
 }
+async function enterLiveOnce(){
+ if(mode==='live')return;
+ if(!loginResolving)loginResolving=enterLive().finally(()=>{loginResolving=null;});
+ return loginResolving;
+}
 async function enterLive(){
  if(!api)throw new Error('O serviço de autenticação não carregou. Verifique a conexão com a internet.');
  const {data:{user},error:userErr}=await api.auth.getUser();if(userErr||!user)throw new Error('Sessão não autorizada.');
@@ -984,7 +990,7 @@ function bind(){
   if(!api)throw new Error('Serviço temporariamente indisponível. Abra este arquivo com conexão à internet.');
   const email=$('email').value.trim(),password=$('password').value;
   const {error}=await api.auth.signInWithPassword({email,password});if(error)throw new Error('Não foi possível entrar. Confira seu e-mail, sua senha e a liberação do acesso.');
-  $('password').value='';await enterLive();msg.textContent='';
+  $('password').value='';await enterLiveOnce();msg.textContent='';
  }catch(err){msg.textContent=err.message||'Erro ao entrar.'}finally{btn.disabled=false}});
  $('btnForgotPassword').addEventListener('click',()=>{
     $('recoveryEmail').value=$('email').value.trim();
@@ -1021,7 +1027,7 @@ function bind(){
       changingPassword=false;
       history.replaceState(null,'',location.pathname);
       try{
-        await enterLive();
+        await enterLiveOnce();
       }catch(err){
         showAuthPanel('login');
         $('loginMessage').textContent='Senha criada. Seu perfil ainda aguarda autorização da coordenação. Entre novamente quando for liberado.';
@@ -1042,11 +1048,23 @@ function bind(){
   api.auth.onAuthStateChange((event,session)=>{
      if(event==='PASSWORD_RECOVERY'&&session)showPasswordSetup();
      if(event==='SIGNED_IN'&&session&&changingPassword)showPasswordSetup();
+     if(event==='SIGNED_IN'&&session&&!changingPassword&&mode==='guest'){
+       // Magic link pode chegar depois do getSession inicial no navegador móvel.
+       // Não executar chamadas assíncronas ao Supabase dentro do callback.
+       setTimeout(()=>{
+         if(mode==='guest'&&!changingPassword)
+           void enterLiveOnce().catch(err=>{
+             $('loginMessage').textContent=err?.message||'Não foi possível concluir a entrada. Tente novamente.';
+           });
+       },0);
+     }
    });
    const {data:{session}}=await api.auth.getSession();
    if(session){
      if(changingPassword)showPasswordSetup();
-     else{try{await enterLive()}catch(e){$('loginMessage').textContent=e.message}}
+     else{try{await enterLiveOnce()}catch(e){$('loginMessage').textContent=e.message}}
+   } else if(authReturnError) {
+     $('teacherMagicMessage').textContent='Este link não concluiu o acesso. Solicite um novo link no painel e abra-o pelo Chrome.';
    }
  }catch(e){
    console.warn('Autenticação não inicializada',e?.message);
