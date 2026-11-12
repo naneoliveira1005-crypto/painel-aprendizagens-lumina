@@ -50,6 +50,15 @@ function setCounts(){
  $('consolidate').disabled=processing||!queue.some(x=>x.state==='ready');
  $('csv').disabled=!consolidated.size;
  $('handoff').disabled=!consolidated.size;
+ // Atualize o resumo da análise depois de qualquer revisão manual.
+ // Não substitua mensagens de gravação, erros ou confirmações do banco.
+ const summary=$('message');
+ if(summary && /^(Análise finalizada:|Conferência atualizada:)/.test(summary.textContent||'')){
+  const ready=queue.filter(x=>x.state==='ready').length;
+  const review=queue.filter(x=>x.state==='review'||x.state==='failed').length;
+  summary.textContent='Conferência atualizada: '+ready+' pronta(s); '+review+
+    ' com pendências.'+(review===0?' Todas as fichas estão prontas para consolidar.':'');
+ }
 }
 function statusLabel(s){return {pending:'Aguardando',ready:'Pronta',review:'Revisar',consolidated:'Consolidada',failed:'Erro'}[s]||s;}
 function readableIssue(key){
