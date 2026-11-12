@@ -1,5 +1,5 @@
 # Migração segura — domínio e e-mails institucionais Lumina
-Status: PREPARADA · DNS e SMTP ainda NÃO alterados
+Status: BLOQUEADA NA REAUTENTICAÇÃO DO SQUARESPACE · DNS e SMTP ainda NÃO alterados; domínio personalizado no GitHub foi revertido por segurança
 
 ## Estado verificado
 - Site: https://naneoliveira1005-crypto.github.io/painel-aprendizagens-lumina/
@@ -45,3 +45,11 @@ Status: PREPARADA · DNS e SMTP ainda NÃO alterados
 - Dados pedagógicos e contas de estudantes não fazem parte da migração e devem permanecer intocados.
 - A mudança do domínio depende de sessão administrativa do Squarespace, e a mudança do remetente depende de configurar SMTP no Supabase.
 - Não marcar concluído até que DNS + HTTPS + login + e-mail tenham sido testados em produção.
+
+
+## Execução e reversão de segurança — 11/11/2026 (noite)
+- Conferido em navegador autenticado que `lumina-br.com` aparece como domínio ativo administrado pela conta da Lumina Educacional no Squarespace, com acesso a detalhes DNS.
+- Tentativa de adicionar CNAME `painel` para `naneoliveira1005-crypto.github.io` foi bloqueada por exigência de novo login/2FA do Google ao acionar “Adicionar registro”. **Não foi criado nenhum novo registro DNS**. MX/SPF/DKIM existentes não foram alterados.
+- A configuração de domínio personalizado `painel.lumina-br.com` foi salva temporariamente no GitHub Pages, mas, diante da falha em adicionar DNS, foi **removida do GitHub Pages na mesma sessão**, restaurando o endereço anterior que permaneceu acessível. Não alterar novamente domínio personalizado até que DNS tenha sido publicado e verificado.
+- Necessário reautenticar o perfil Squarespace com 2FA no ato da alteração, sem compartilhar senha em chat. Depois: criar CNAME, verificar propagação, configurar novamente custom domain GitHub, testar HTTPS, corrigir allowlist Supabase Auth, checar login.
+- **Pedido adicional da usuária:** retirar também a vinculação administrativa de “Nani”, e não somente da URL. O repo ainda pertence a `naneoliveira1005-crypto`. A mudança de domínio **não transfere propriedade do repositório**. Para separar totalmente, será preciso uma conta ou organização GitHub administrada pela Lumina e um processo deliberado de transferência de repositório — com a anuência e controle das credenciais pelas responsáveis; não iniciar transferência sem identificar destino e proteger o funcionamento.
