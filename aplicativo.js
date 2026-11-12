@@ -51,7 +51,7 @@ function render(){
   console.error('Falha ao abrir a seção',currentPage,err);
   pageMarkup='<div class="card"><h2>Não foi possível carregar esta seção</h2>'+
    '<p>O conteúdo anterior foi ocultado para evitar confusão. Atualize a página.</p>'+
-   '<p>Para analisar uma ficha sem alterar resultados, <a href="leitor-v5.html?v=20261111-revisao-m5-omr-v20" target="_blank" rel="noopener noreferrer">abrir o leitor de PDF ou foto</a>.</p></div>';
+   '<p>Para analisar uma ficha sem alterar resultados, <a href="leitor-v5.html?v=20261111-resumo-conferencia-v21" target="_blank" rel="noopener noreferrer">abrir o leitor de PDF ou foto</a>.</p></div>';
  }
  $('content').innerHTML=pageMarkup;
  const input=$('csvReview');if(input)input.addEventListener('change',e=>reviewCSV(e.target.files?.[0]));
@@ -541,7 +541,7 @@ async function confirmImportedReview(id,button){
 
 function batches(d){
  // O envio deve ser a primeira ação na aba de leitura, sem botão escondido.
- const readerUrl='leitor-v5.html?v=20261111-revisao-m5-omr-v20';
+ const readerUrl='leitor-v5.html?v=20261111-resumo-conferencia-v21';
  const reader=mode==='live'&&['pedagogical_admin','teacher'].includes(role)?
   '<div class="card" id="readerTop"><h2>1. Enviar ficha preenchida</h2>'+
   '<div id="stageSavedBanner" class="notice info" role="status">'+
