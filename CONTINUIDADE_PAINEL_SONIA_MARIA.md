@@ -77,3 +77,13 @@ Solicitação: organizar automaticamente os acessos e vínculos, sem cadastro ma
 - Dashboard de professora RLS por `staff_classrooms`; a coordenação permanece responsável pela publicação oficial. Nunca enviar senha por WhatsApp.
 
 **Próxima ação:** confirmar entrega real de um link de autenticação e início de sessão docente com cadastro autorizado, verificar se no banco `staff_profiles.role='teacher'` e dois vínculos são criados; só então distribuir orientação às cinco professoras que possuem e-mail. Solicitar os três e-mails ausentes para completar as demais, sem permitir acesso por e-mail aleatório.
+
+
+## Atualização de acesso, turmas e alertas (11/11/2026, noite)
+
+- **Ana Rita Andrade Lima** teve o e-mail `andradeanarita06@gmail.com` incluído diretamente e verificado em `public.staff_directory`. Atribuições já existentes: 4º A e 4º C. Conta ainda em `pending`, pois exige confirmação do e-mail pela própria professora.
+- Verificado no Supabase: **8 professoras, 16 vínculos únicos, 16 turmas cobertas, zero turma sem professora**, cada docente possui **exatamente duas turmas**. Isso não conflita com `staff_classrooms` (chave composta `user_id,classroom_id`) nem com `app_private.is_assigned_teacher` (verifica a turma solicitada contra todos os vínculos da conta). A ativação por e-mail copia todas as turmas, não apenas a primeira.
+- **6 de 8 professoras possuem e-mail**. Faltam **Joselita Ribeiro Santana** (4º B, 5º B) e **Roseli** (3º B, 3º D). Não criar e-mails fictícios.
+- Criado log protegido `app_private.teacher_activation_log` e trigger `lumina_log_teacher_activation` que registra transição `pending/invited→active` com auth_user_id confirmado. Só serviço administrativo pode ler o log; sem acesso anônimo ou dos usuários docentes.
+- Criada automação `Avisar ativações das professoras`, checagem horária condicional em America/Bahia. Ao detectar eventos ainda não avisados, conferir `staff_profiles`, `staff_classrooms` e as turmas e enviar aviso à usuária. Atualizar `notified_at` para evitar alertas duplicados. Não mencionar nomes de alunos nas notificações.
+- **Próxima validação real**: uma das professoras com e-mail, por exemplo Ana Paula ou Ana Rita, solicitar link no painel e confirmar recebimento no e-mail. Verificar SMTP real e redirect URL do Supabase; o envio para endereços externos pode exigir SMTP próprio, conforme documentação. Só após teste real afirmar acesso efetivo à plataforma.
