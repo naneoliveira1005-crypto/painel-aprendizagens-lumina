@@ -36,7 +36,19 @@
     <div class="login-icon" aria-hidden="true">⌁</div>
     <div class="overline">ACESSO INSTITUCIONAL</div>
     <h2>Entrar no painel</h2>
-    <p>O acesso é individual e depende de convite e liberação da gestão pedagógica.</p>
+    <p>Acesso individual para profissionais cadastrados na Escola Sônia Maria.</p>
+    <div style="border:1px solid #d4e5d9;border-radius:12px;padding:16px;margin:16px 0 20px;background:#f6faf7">
+      <h3 style="margin:0 0 7px;font-size:19px">Professora: entrar sem senha</h3>
+      <p style="margin:0 0 12px">Digite seu e-mail cadastrado na escola. Você receberá um link para abrir o painel.</p>
+      <form id="teacherMagicForm" autocomplete="on">
+        <label for="teacherMagicEmail">Seu e-mail</label>
+        <input id="teacherMagicEmail" type="email" inputmode="email" autocomplete="email" placeholder="seuemail@exemplo.com" required>
+        <button id="btnTeacherMagic" type="submit" class="primary">Receber link de acesso por e-mail</button>
+        <div id="teacherMagicMessage" class="form-message" role="status" aria-live="polite"></div>
+      </form>
+      <p class="mininote">Abra o e-mail recebido e clique no link. Não compartilhe esse link com ninguém.</p>
+    </div>
+    <div class="login-divider"><span>Coordenação ou acesso com senha</span></div>
     <form id="loginForm" autocomplete="on">
       <label for="email">E-mail profissional</label>
       <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="seuemail@exemplo.com" required>
