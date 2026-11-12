@@ -888,7 +888,7 @@ async function enterLive(){
  if(!['teacher','pedagogical_admin','director'].includes(p.role)){
   await api.auth.signOut();throw new Error('Sua conta ainda não foi liberada pela coordenação. Nenhum dado escolar foi exibido.');
  }
- profile=p;role=p.role;mode='live';currentPage='visao';pilotCandidate=null;transferDraft=null;pilotStageMessage='';
+ profile=p;role=p.role;mode='live';currentPage=p.role==='teacher'?'lotes':'visao';pilotCandidate=null;transferDraft=null;pilotStageMessage='';
  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('btnLogout').classList.remove('hidden');
  // Exibe imediatamente a estrutura protegida, mesmo se alguma consulta do banco demorar.
  render();
