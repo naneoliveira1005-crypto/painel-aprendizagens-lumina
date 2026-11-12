@@ -61,3 +61,14 @@ Status: BLOQUEADA NA REAUTENTICAÇÃO DO SQUARESPACE · DNS e SMTP ainda NÃO al
 - Tentativa de convidar `priscilapossi3@gmail.com` como administradora foi **bloqueada antes do envio** pela confirmação de segurança `sudo mode`/2FA do GitHub da conta criadora. Não registrar convite como enviado; não compartilhar código em chat.
 - Antes de transferir repositório escolar: Nair precisa autorizar a operação no GitHub e convidar Priscila como **Owner** (GitHub docs permitem convidar para role Owner na organização gratuita), Priscila precisa possuir sua própria conta GitHub, com e-mail verificado, aceitar convite e ter acesso administrativo confirmado.
 - Somente depois disso avaliar transferência exclusiva do repo `painel-aprendizagens-lumina` e adequação GitHub Pages, DNS Squarespace e Supabase redirect URL. Repositórios `Cartas-de-Percurso` e `memorias-em-movimento-cenpec-2026` **não tocar**.
+
+
+## Ativação pública do domínio institucional — 12/11/2026
+- A usuária criou no Squarespace o registro DNS CNAME host `painel` para `naneoliveira1005-crypto.github.io`, TTL 4 horas. Confirmado no DNS público do Google com status 0 e resposta correspondente.
+- No GitHub Pages do repositório escolar (ainda em `naneoliveira1005-crypto`), foi configurado e salvo o Custom domain `painel.lumina-br.com`; fonte de publicação main/root preservada. Arquivo CNAME verificado no repositório com conteúdo correto.
+- Teste por navegador externo confirmou `https://painel.lumina-br.com/` via HTTPS exibindo 'Lumina · Painel de Aprendizagens' e formulário de entrada, com URL final correta.
+- Teste do endereço anterior `https://naneoliveira1005-crypto.github.io/painel-aprendizagens-lumina/` confirmou redirecionamento automático para o novo endereço.
+- GitHub ainda relatou em sua tela DNS check 'in progress' e Enforce HTTPS indisponível no instante da configuração; embora HTTPS público tenha respondido, verificar futuramente estado final do certificado e Enforce HTTPS.
+- Não foi feito teste autenticado real do Magic Link nem alteração das URLs permitidas em Supabase Auth. Antes de comunicar docentes, validar redirect URL do domínio novo no projeto Supabase escolar e testar login com professora autorizada e Priscila.
+- Organização `lumina-educacional` criada gratuitamente, com duas contas Owner conforme inspeção do GitHub: `naneoliveira1005-crypto` e `020721Sonia` (aparentemente a conta de Priscila; confirmar identidade com a responsável). **Repositório ainda NÃO transferido**, para evitar romper link DNS ou autenticação.
+- Próxima fase de transferência administrativa exige: confirmar conta Owner de Priscila, preparar mudança do CNAME para `lumina-educacional.github.io` após transferência do repo, realinhar custom domain no GitHub Pages e reconfirmar URLs Supabase antes do corte.
