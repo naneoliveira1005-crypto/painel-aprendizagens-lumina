@@ -936,6 +936,7 @@ function enterDemo(){pilotCandidate=null;pilotStageMessage='';mode='demo';role=$
 function exitDemo(){pilotCandidate=null;transferDraft=null;pilotStageMessage='';loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};mode='guest';profile=null;currentPage='visao';$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('btnLogout').classList.add('hidden');$('loginMessage').textContent='';showAuthPanel('login');}
 // A pessoa convidada configura sua própria senha após a confirmação do Supabase.
 const invitationFlow = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type');
+const authReturnError = (() => {const q=new URLSearchParams(window.location.hash.replace(/^#/,''));return q.get('error_description')||q.get('error_code')||'';})();
 let changingPassword = invitationFlow === 'invite' || invitationFlow === 'recovery';
 function showAuthPanel(section){
   $('teacherAccessPanel').classList.toggle('hidden',section!=='login');
@@ -968,12 +969,12 @@ function bind(){
     const {error}=await api.auth.signInWithOtp({
       email,
       options:{
-        emailRedirectTo:location.origin+location.pathname,
+        emailRedirectTo:new URL('./',window.location.href).href,
         shouldCreateUser:true
       }
     });
     if(error)throw error;
-    msg.textContent='Confira sua caixa de entrada e o lixo eletrônico. Abra o e-mail e clique no link para entrar. Não precisa de senha.';
+    msg.textContent='Link solicitado. Abra o e-mail recebido e toque em Entrar. No celular, use Abrir no Chrome se o Gmail abrir numa janela interna. O link pode ser usado uma vez.';
   }catch(error){
     console.warn('Não foi possível solicitar o link docente',error?.message);
     msg.textContent='Não foi possível enviar o link agora. Confira o e-mail e tente novamente mais tarde. Se continuar, avise a coordenação.';
