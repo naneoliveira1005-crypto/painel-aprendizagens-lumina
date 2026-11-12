@@ -21,7 +21,7 @@ Retome o desenvolvimento e a verificação do **Painel das Aprendizagens da Esco
 
 A escola/secretaria imprime **fichas padronizadas já individualizadas**, com nome, turma, QR próprio e quatro marcas de alinhamento. A professora **não imprime, não recorta etiquetas, não marca X**. Ela aplica as atividades, **pinta completamente os quadradinhos da ficha de correção OMR V2**, digitaliza pelo Google Drive em PDF (pode conter várias páginas) ou tira foto JPG/PNG e envia ao painel. O leitor compara QR e respostas. Os resultados ficam **provisórios para conferência**; somente a coordenação autoriza publicação oficial e gráficos. Não inventar resultados quando a leitura é incerta.
 
-Há 16 turmas (1º A ao 5º C, conforme banco) e **449 estudantes cadastrados**. Última consulta: **2 avaliações oficiais** já existentes no 3º B; **1 ficha OMR V2 pintada salva provisoriamente** em 3º B; **7 registros históricos antigos** do 2º A pendentes de matrícula. Não apagar ou publicar esses registros inadvertidamente.
+Há 16 turmas (1º A ao 5º C, conforme banco) e **449 estudantes cadastrados**. Verificação em 11/11/2026: **0 avaliações oficiais no projeto**. As **2 avaliações de teste do 3º B**, antes publicadas por engano, foram retiradas da área oficial mediante confirmação expressa da usuária e **arquivadas com seus 2 históricos e lote de origem** na tabela privada `app_private.assessment_test_archive` (7 entradas). Há **6 fichas OMR V2 de ensaio em 3º B aguardando conferência** (lote de 1 e lote de 5); **7 registros de testes antigos de 2º A** continuam pendentes de matrícula. As 449 matrículas ativas foram preservadas. O 3º B conta com 30 estudantes ativos, nenhum oficialmente avaliado. Não apagar ou publicar esses registros inadvertidamente.
 
 ## Atualização solicitada e aplicada neste atendimento
 
@@ -55,3 +55,10 @@ Alterações já feitas em GitHub:
 ## Comando curto para o próximo chat
 
 > Retome o Painel das Aprendizagens da Escola Sônia Maria do ponto em que paramos. Leia primeiro o arquivo `CONTINUIDADE_PAINEL_SONIA_MARIA.md` no repositório GitHub `naneoliveira1005-crypto/painel-aprendizagens-lumina`. Confira a versão publicada e o Supabase da Escola Sônia Maria. Estamos usando exclusivamente fichas OMR V2 preenchidas, com QR individual. No último teste, cinco fichas foram analisadas: quatro prontas, uma pendente em M5. Foi solicitado trocar o botão de cinco fichas por impressão individual, mantendo os dois modos coletivos; o código foi atualizado. Continue a partir da validação dessas alterações, sem pedir que eu reconte tudo e sem publicar resultados de teste.
+
+
+## Correção do cadastro antes da aplicação real (11/11/2026)
+
+A usuária confirmou que **as duas avaliações oficiais anteriores do 3º B eram testes, não resultados de aprendizagem reais**. Executada limpeza transacional com backup reversível, arquivando 2 linhas de `assessment_results`, 2 de `assessment_result_history`, 2 de `assessment_import_rows` e 1 de `import_batches`. A auditoria privada está em `app_private.assessment_test_archive`, sem acesso `anon` ou `authenticated`. Conferência posterior: **0 resultados oficiais**, **30 estudantes ativos no 3º B**, **449 matrículas ativas no projeto**. Os lotes OMR piloto de 1 e 5 registros permanecem provisórios e **não entram nos gráficos**. Não publicar os testes. Os próximos passos são organizar a aplicação real e concluir vinculação/autenticação das professoras.
+
+**Orientação essencial à usuária:** não precisa imprimir todas as fichas do 3º B só para continuar o desenvolvimento. A escola imprimirá quando estiver pronta para aplicar a avaliação real com a turma. Não repetir pilotos desnecessários.
