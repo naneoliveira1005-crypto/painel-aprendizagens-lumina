@@ -88,7 +88,7 @@ function collectErrors(entry){
  for(const [_,key,opts] of GROUPS){if(!opts.includes(entry.answers?.[key])) errors.push(readableIssue(key)+': preenchimento da alternativa não confirmado');}
  if(entry.shapeWarning)errors.push('Imagem não enquadrada (confira QR e os quatro marcos)');
  if(entry.alignmentWarning)errors.push('Alinhamento dos quadrinhos precisa de revisão');
- if(!entry.mathCheck&&entry.template!=='FICHA-V2')
+ if(!entry.mathCheck)
   errors.push('A grade matemática ainda não passou na segunda verificação; conferir imagem');
  else if(entry.mathCheck.disagreements?.length)
   errors.push('As duas leituras da Matemática divergem em '+entry.mathCheck.disagreements.join(', ')+'; revisão obrigatória');
