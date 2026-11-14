@@ -244,6 +244,8 @@ function assessments(d){
   '<div class="buttonrow"><button type="button" class="smallbtn solid" data-school-packet="individual" '+(packetClasses.length?'':'disabled')+'>Imprimir ficha individual do estudante</button>'+
   '<button type="button" class="smallbtn" data-school-packet="correction" '+(packetClasses.length?'':'disabled')+'>Imprimir todas as fichas de correção da turma</button>'+
   '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa da turma</button></div>'+
+  '<div class="buttonrow"><button type="button" class="smallbtn" data-test-x="1">Imprimir ficha fictícia de conferência A4</button></div>'+
+  '<p class="intro-note">Teste de impressão sem matrícula real. Confira QR, quatro marcos de alinhamento e os campos M1 a M7; não envie esta ficha para resultados.</p>'+
   '<p class="intro-note"><strong>Modelo único OMR V2:</strong> nome, turma e QR individual já impressos. Pinte o quadradinho, digitalize em PDF ou foto e confira o resultado. Impressão A4, escala real (100%).</p>'+
   '<label style="display:flex;align-items:center;gap:8px;margin:14px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked> Excluir estudantes que já têm avaliação oficial</label>'+
   '</div>':'';
