@@ -100,3 +100,42 @@ Correção no frontend (`aplicativo.js?v=20261111-corrigir-retorno-login-v35`): 
 **Pendente externo:** verificar em Supabase → Authentication → URL Configuration o Site URL e redirect allowlist da URL pública `https://naneoliveira1005-crypto.github.io/painel-aprendizagens-lumina/` (incluir também `.../index.html` se aplicável). O conector Supabase atual não disponibiliza edição desse ajuste de Auth; precisa painel administrativo. A tela vazia no domínio Supabase é compatível com URL de retorno inadequada; não confirmar causa única sem verificar configuração. Log Auth teve ao menos um 429 `over_email_send_rate_limit`; não orientar repetição de links sem intervalo. Antes de liberar vários acessos, configurar SMTP de uso real se necessário.
 
 **Branding solicitado:** a coordenação quer que o endereço público não exiba `naneoliveira1005-crypto`, e prefere identidade de Priscila associada à Lumina. A conta atual de coordenação está cadastrada com `priscilapossi3@gmail.com` (não `gamail.com`). O identificador `naneoliveira...` é o usuário do GitHub na URL, **não** o e-mail de acesso; para alterar a URL sem alterar cadastros, usar domínio próprio da Lumina sob controle DNS, com configuração GitHub Pages e posterior atualização da allowlist do Supabase Auth. Não transferir repositório nem modificar DNS sem instruções e acesso ao domínio.
+
+---
+
+## Atualização consolidada — 14/11/2026 (pré-aplicação)
+
+**Esta seção prevalece sobre situações antigas de acesso, piloto e versão do leitor descritas acima.** As etapas anteriores são mantidas apenas como histórico. A aplicação real das avaliações ainda não ocorreu.
+
+### Estado do banco da Escola Sônia Maria
+- Supabase exclusivo da escola: `qqygivtxxuhjmexvphma`. **Nunca usar o projeto de Barrocas.**
+- 449 estudantes ativos, distribuídos em 16 turmas, todos vinculados à sua turma e com QR individual. Não há QR duplicado nem matrícula sem vínculo.
+- 0 resultados oficiais em `assessment_results`; o ciclo de avaliação 2026 permanece em rascunho.
+- 14 registros experimentais, pertencentes a 4 lotes, **arquivados em 14/11, sem exclusão**: linhas `assessment_import_rows.validation_status='rejected'`, notas iniciadas com `ARQUIVADO COMO TESTE EM 2026-11-14`, lotes `import_batches.status='failed'`. Sete tinham vínculo com matrícula real e sete eram registros mais antigos sem vínculo. Todos foram preservados, mas não bloqueiam novos lançamentos nem participam dos resultados.
+- Conferência posterior ao arquivamento: 14 linhas preservadas, 4 lotes arquivados, 0 fichas em revisão ativa, 0 resultados oficiais, 449 matrículas preservadas.
+- Estrutura para envio: até 10 fichas da mesma turma por lote; previsão agregada de **51 lotes** para as 449 fichas, respeitando as 16 turmas.
+
+### Leitor OMR V2 e revisão da interface
+- Corrigida a recuperação de marcas geométricas em `leitor-omr-v2.js`, com novas tentativas controladas por limiar de contraste e versão de cache atualizada em `leitor-v5.html`. Não flexibilizar aceitação de marcas ambíguas.
+- Com ficha experimental preenchida: Priscila confirmou **1 pronta, 0 pendências**, exportou CSV correto com LP e M1–M7; enviou e recebeu `LOTE SALVO`. A gravação foi verificada no banco, e a ficha do 1º A apareceu no histórico depois de atualizar.
+- Em `aplicativo.js`, inicializada a variável `pedagogicalReviewMessage` que antes ocultava a seção “Conferência pedagógica — fichas armazenadas”.
+- Depois de arquivar pilotos, os registros experimentais são excluídos da contagem de pendências ativas e o histórico apresenta “Arquivado · teste”.
+- Ajuste semântico em `aplicativo.js`: a opção T11 da ficha impressa é **“Recita”**, portanto o histórico deve mostrar **“Recita o texto de memória”** (NÃO “Receita”); M7 é “Leitura de dados”.
+- O fluxo real segue: imprimir → aplicar → pintar os quadradinhos → enviar foto/PDF OMR → revisar → consolidar → salvar provisoriamente → conferência pedagógica da coordenação → publicação oficial, separadamente.
+
+### Testes de geração, navegação e segurança
+- Revisão estática do gerador `fichas-personalizadas.js` com estudantes inteiramente fictícios para 1º, 2º, 3º, 4º e 5º anos: `correction` gera 1 página A4/estudante, `activities` gera 2, `full` gera 3. Gerador rejeitou estudante inativo, turma incorreta, QR inválido e duplicata.
+- A conferência do material confirma estrutura com cinco palavras, frase, texto de memória, narrativa e sete atividades de Matemática por ano, além de roteiro/gabarito docente. **A validação visual de uma impressão física A4 em tamanho real continua pendente.**
+- A visita ao site público mostrou login, demonstração e leitor acessíveis. Na demonstração, dados são fictícios e os recursos de impressão e envio real não ficam expostos. Essa ausência é uma proteção intencional; para impressão real, usar conta de coordenação.
+- RLS conferida com transações de leitura simulando cada uma das três professoras ativas: Ana Rita vê somente 4º A (33) e 4º C (25), Cirlene só 3º A (28) e 3º C (26), Roseli só 3º B (30) e 3º D (24). A validação navegando pelo perfil docente real ainda está pendente.
+- Os acessos de cinco docentes continuam aguardando confirmação: Ana Paula (5º A/C), Andréa (1º A/B), Carla (2º A/C), Genilzan (2º B/4º D) e Joselita (4º B/5º B). Joselita já tem registro Auth, mas seu e-mail não está confirmado; as quatro outras ainda não têm conta Auth criada. Priscila solicitou novamente os acessos e aguarda retorno.
+- Advisor Supabase: proteção contra senhas comprometidas desabilitada (pendência de configuração administrativa); duas tabelas de log/arquivo em `app_private` com RLS sem políticas, isolamento intencional sem acesso docente.
+
+### Operação e próximas etapas
+- Gerada planilha operacional `Controle_Operacional_Painel_Sonia_Maria_2026.xlsx` com Resumo, Turmas, Lotes, Acessos, Checklist e Orientacoes: 449 fichas OMR; 898 páginas de atividades; 1.347 páginas caso todas as atividades e correções sejam impressas; 51 lotes planejados.
+- **Não imprimir 449 novas fichas para testar; não solicitar repetição da aplicação.** As professoras ainda não aplicaram. Aguarda-se autorização da escola para a impressão/entrega e a futura aplicação.
+- A aplicação de **um primeiro lote REAL** e a conferência prática do acesso no navegador de uma professora devem ocorrer depois da aplicação ou quando a docente estiver disponível.
+- Prioridades independentes das professoras: conferir uma impressão física A4 com QR e quatro marcas, validar gabaritos e a versão final dos instrumentos com a coordenação, organizar logística e garantir publicação controlada.
+- Não inserir dados fictícios em matrícula real. Não reativar, concluir conferência ou publicar lotes arquivados. Antes de publicar os primeiros resultados reais, verificar a integridade do lote e autorização da coordenação.
+
+**Versão de entrada revisada em 14/11/2026:** `index.html` referencia `aplicativo.js?v=20261114-revisao-instrumentos-v43`, que inclui a correção de T11. Confirmar no site se a publicação já propagou antes de orientar uma atualização de navegador.
