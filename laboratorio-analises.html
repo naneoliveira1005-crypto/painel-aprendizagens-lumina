@@ -1,0 +1,320 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Lumina · Laboratório de Análises (Fictício)</title>
+<link rel="stylesheet" href="estilo.css"><link rel="stylesheet" href="graficos-avaliacao.css?v=20261109-graficos-v1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script>
+<script src="qrcode-generator.js" defer></script>
+<script src="fichas-personalizadas.js?v=20261114-homologacao-pedagogica-v11" defer></script>
+<style>
+body{background:#f5f8f5;color:#20392e;font-family:Arial,sans-serif}
+.labtop{background:#173e33;color:white;padding:23px max(18px,calc((100vw - 1120px)/2))}
+.labtop h1{font-size:27px;margin:4px 0 8px}.labtop p{margin:0;color:#e2eee7}
+.labmain{max-width:1120px;margin:26px auto;padding:0 15px 40px}
+.labcard{background:white;padding:21px;border:1px solid #d6e5da;border-radius:13px;margin-bottom:18px}
+.labnotice{background:#fff4df;border-left:4px solid #a78127;padding:15px;margin-bottom:18px;line-height:1.5}
+.labrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.labbtn{background:#173e33;color:white;border:0;border-radius:7px;padding:11px 15px;cursor:pointer;font-weight:bold}
+.labbtn.secondary{background:white;color:#173e33;border:1px solid #173e33}
+.labcard select,.labcard input[type=file]{padding:10px;border:1px solid #b4c9be;border-radius:7px;max-width:100%}
+.labmuted{color:#596f63;font-size:13px;line-height:1.5}
+#labReader{width:100%;height:1020px;border:1px solid #cee0d5;border-radius:8px}
+#gate{max-width:740px;margin:40px auto;padding:25px;border-radius:12px;background:white}
+#status{padding:12px;margin-top:12px;white-space:pre-wrap}
+#results .card{margin:14px 0}
+[hidden]{display:none!important}
+</style>
+</head><body>
+<div class="labtop"><h1>LUMINA · Laboratório de Análises</h1><p>Simulação pedagógica com fichas inteiramente fictícias · Sem dados oficiais da Escola Sônia Maria</p></div>
+<div id="gate">Conferindo o acesso à conta de homologação…</div>
+<main class="labmain" id="lab" hidden>
+<div class="labnotice"><strong>AMBIENTE FICTÍCIO, NÃO OFICIAL.</strong> Imprima apenas fichas criadas aqui. Nenhuma matrícula real é consultada; nenhum registro é enviado ao Supabase. Os gráficos usam a mesma rotina de cálculo do Painel das Aprendizagens, com resultados salvos somente neste navegador.</div>
+<div class="labcard">
+<h2>1 · Preparar fichas fictícias</h2>
+<p>Selecione um ano. Cada ano tem três estudantes inteiramente inventados, com QR Codes próprios.</p>
+<div class="labrow"><select id="grade" aria-label="Ano para o teste">
+<option value="1">1º ano · 3 fichas fictícias</option><option value="2">2º ano · 3 fichas fictícias</option>
+<option value="3" selected>3º ano · 3 fichas fictícias</option><option value="4">4º ano · 3 fichas fictícias</option><option value="5">5º ano · 3 fichas fictícias</option>
+</select>
+<button class="labbtn" id="printOMR">Imprimir 3 fichas OMR</button>
+<button class="labbtn secondary" id="printFull">Imprimir avaliações completas</button></div>
+<p class="labmuted">Na impressão, use A4 e 100%. Pinte resultados diferentes para observar os gráficos. Nunca use fichas de crianças reais neste laboratório.</p>
+</div>
+<div class="labcard">
+<h2>2 · Digitalizar e conferir no leitor original</h2>
+<p>Carregue as fichas preenchidas em PDF ou foto. Clique em <strong>Analisar lote inteiro</strong>, confira as marcações, depois em <strong>Consolidar fichas válidas</strong> e <strong>Exportar CSV validado</strong>. Não é necessário enviar nada à escola.</p>
+<iframe id="labReader" title="Leitor OMR original para fichas fictícias" src="leitor-v5.html?v=20261114-laboratorio-v25&lab=1" loading="eager" referrerpolicy="same-origin"></iframe>
+</div>
+<div class="labcard">
+<h2>3 · Enviar CSV fictício para os gráficos</h2>
+<p>Escolha o CSV exportado no passo anterior. A importação acontece <strong>somente no seu navegador</strong> e aceita exclusivamente os QR Codes fictícios gerados neste laboratório.</p>
+<input id="csvFile" type="file" accept=".csv,text/csv" aria-label="CSV fictício validado">
+<div class="labrow" style="margin-top:12px"><button class="labbtn secondary" id="loadExample">Ver exemplo de indicadores (fictício)</button>
+<button class="labbtn secondary" id="exportResults">Exportar dados fictícios computados</button>
+<button class="labbtn secondary" id="clearLab">Limpar simulação local</button></div>
+<div id="status" aria-live="polite" role="status">Nenhuma ficha foi incorporada ao laboratório nesta sessão.</div>
+</div>
+<div class="labcard"><h2>4 · Leitura pedagógica dos indicadores</h2><p>Abaixo aparecem os mesmos gráficos, contagens e detalhes por turma que o painel prepara para os resultados oficiais, mas exclusivamente com dados fictícios. Use o seletor de turma para comparar anos.</p>
+<div id="results"></div></div>
+<a href="index.html">Voltar ao Painel das Aprendizagens</a>
+</main>
+<script>
+'use strict';
+const LAB_USER='372952ff-fedb-412d-ae4a-8002d02cbd9f';
+const KEY='lumina_omr_laboratorio_ficticio_v1';
+const clean=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
+const mode='live',role='teacher';
+let selectedResultsClass='',authorized=false;
+const labClasses=Array.from({length:5},(_,j)=>{
+ const grade=j+1,klass={id:'lab-'+grade,label:grade+'º LAB',shift:'outro',school_year:2026};
+ const students=Array.from({length:3},(_,k)=>{
+  const idx=k+1;return {id:'lab-ficticio-'+grade+'-'+idx,display_name:'ESTUDANTE FICTÍCIO '+String.fromCharCode(64+idx)+' · '+grade+'º',
+  active:true,classroom_id:klass.id,local_reference:'SON-26-FA'+grade.toString(16).toUpperCase().padStart(2,'0')+idx.toString(16).toUpperCase().padStart(8,'0')};
+ });
+ return {grade,klass,students};
+});
+const roster=new Map(labClasses.flatMap(g=>g.students.map(s=>[s.local_reference,s])));
+function readRecords(){
+ try{const r=JSON.parse(localStorage.getItem(KEY)||'[]');
+  if(!Array.isArray(r))return [];
+  return r.filter(x=>x&&roster.get(x.codigo)?.id===x.student_id&&x.answers&&typeof x.answers==='object');
+ }catch(e){return [];}
+}
+function saveRecords(r){localStorage.setItem(KEY,JSON.stringify(r));}
+function cardKpi(number,label,subtitle=''){return `<div class="kpi"><span class="num">${clean(number)}</span><span class="label">${clean(label)}</span>${subtitle?`<span class="caption">${clean(subtitle)}</span>`:''}</div>`;}
+function learningBars(items,denominator){
+ const size=Math.max(1,Number(denominator)||1);
+ return '<div class="learning-chart"><div class="chart-rows">'+items.map((item,i)=>{
+  const label=String(item[0]),count=Math.max(0,Number(item[1])||0);
+  const width=Math.min(100,100*count/size);
+  const styles=['chart-fill--green','chart-fill--gold','chart-fill--light','chart-fill--deep','chart-fill--sand'];
+  return '<div class="chart-line">'+
+    '<span class="chart-label">'+clean(label)+'</span>'+
+    '<div class="chart-track" role="img" aria-label="'+clean(label+': '+count+' de '+denominator)+'">'+
+    '<span class="chart-fill '+styles[i%styles.length]+'" style="width:'+width.toFixed(2)+'%"></span></div>'+
+    '<span class="chart-count">'+count+'</span></div>';
+ }).join('')+'</div></div>';
+}
+function learningMathChart(records,mathLabels){
+ const n=records.length;
+ if(!n)return '';
+ const legend=[['level-a','A · Autonomia'],['level-p','P · Parcial/com apoio'],['level-n','N · Não demonstrou na atividade'],['level-no','NO · Não observado']]
+  .map(([theme,label])=>'<span class="chart-legend-item"><span class="chart-legend-swatch '+theme+'"></span>'+label+'</span>').join('');
+ const bar=mathLabels.map((label,i)=>{
+  const key='M'+(i+1);
+  const marks=['A','P','N','NO'];
+  const counts=marks.map(mark=>records.filter(r=>r.answers?.[key]===key+'_'+mark).length);
+  const themes=['level-a','level-p','level-n','level-no'];
+  const segments=counts.map((count,j)=>'<span class="chart-math-segment '+themes[j]+'" style="width:'+((100*count/n).toFixed(2))+'%"></span>').join('');
+  const textCounts=counts.map((qty,j)=>['A','P','N','NO'][j]+': '+qty).join(' · ');
+  return '<div class="chart-math-item">'+
+   '<div class="chart-math-label"><strong>'+clean(key)+'</strong> <span>'+clean(label)+'</span></div>'+
+   '<div class="chart-math-track" role="img" aria-label="'+clean(key+' '+label+': '+textCounts)+'">'+segments+'</div>'+
+   '<div class="chart-math-tallies">'+clean(textCounts)+'</div></div>';
+ }).join('');
+ return '<div class="learning-chart"><p class="chart-subtitle">Cada barra representa somente as '+n+' avaliações oficiais desta turma.</p>'+
+  '<div class="chart-math-legend">'+legend+'</div>'+
+  '<div class="chart-math-rows">'+bar+'</div>'+
+  '<p class="chart-note">Os segmentos indicam quantidades, não notas. Os estudantes sem ficha publicada não entram no gráfico.</p></div>';
+}
+
+function officialResultsDashboard(d){
+ if(mode==='demo')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>Disponível apenas para usuários autorizados, a partir de resultados oficiais.</p></div>';
+ if(role==='director')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>O acesso da direção não exibe dados individuais nesta etapa. Indicadores agregados poderão ser disponibilizados após a configuração específica desse perfil.</p></div>';
+ const authorized=d.students.filter(s=>s.active&&d.classrooms.some(c=>c.id===s.classroom_id));
+ const studentById=new Map(authorized.map(s=>[s.id,s]));
+ const results=d.results.filter(r=>studentById.has(r.student_id)&&r.answers&&typeof r.answers==='object');
+ const byClass=klass=>results.filter(r=>studentById.get(r.student_id).classroom_id===klass);
+ const available=d.classrooms.filter(c=>authorized.some(s=>s.classroom_id===c.id))
+   .slice().sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+ if(!available.length)return '<div class="card"><h2>Panorama das aprendizagens</h2><p>Ainda não há turmas vinculadas a este acesso.</p></div>';
+ const chosen=available.some(c=>c.id===selectedResultsClass)?selectedResultsClass:
+   (available.find(c=>byClass(c.id).length>0)||available[0]).id;
+ selectedResultsClass=chosen;
+ const klass=available.find(c=>c.id===chosen);
+ const enrolled=authorized.filter(s=>s.classroom_id===chosen).length;
+ const records=byClass(chosen);
+ const n=records.length;
+ const percent=enrolled?Math.round(n*100/enrolled):0;
+ const hLabels=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'];
+ const mathLabels=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Leitura de dados'];
+ const mathValues={A:'Demonstrou com autonomia e resposta adequada',P:'Demonstrou parcialmente ou com ajuda',N:'Não demonstrou nesta atividade',NO:'Não observado'};
+ const memories={T10:'Lê',T11:'Recita',T12:'Não lê'};
+ const narratives={T20:'Lê com fluência',T21:'Lê sem fluência',T22:'Não lê'};
+ const readValues={L1:'Reconhece letras',L2:'Lê letras isoladas',L3:'Lê sílabas simples',L4:'Lê sílabas complexas',L5:'Lê palavras',L6:'Lê frases simples',L7:'Lê frases complexas'};
+ const options=available.map(c=>'<option value="'+clean(c.id)+'"'+(c.id===chosen?' selected':'')+'>'+clean(c.label)+' — '+byClass(c.id).length+' avaliação(ões)</option>').join('');
+ const summary='<div class="kpi-grid">'+
+   cardKpi(n,'Avaliações oficiais','Com conferência concluída')+
+   cardKpi(enrolled,'Estudantes da turma','Matrículas ativas')+
+   cardKpi(Math.max(0,enrolled-n),'Ainda sem avaliação oficial','Não significa ausência de aprendizagem')+
+   cardKpi(percent+'%','Cobertura da avaliação','Amostra parcial até completar a turma')+'</div>';
+ let body='<div class="notice info">Ainda não há resultados oficiais nesta turma. Selecione outra turma ou continue a leitura das fichas.</div>';
+ if(n){
+  const distribution=hLabels.map((label,i)=>{
+    const count=records.filter(r=>r.answers.H==='H'+(i+1)).length;
+    return '<tr><td>'+clean(label)+'</td><td>'+count+'</td></tr>';
+  }).join('');
+  const math=mathLabels.map((label,i)=>{
+   const key='M'+(i+1);
+   const count=mark=>records.filter(r=>r.answers[key]===key+'_'+mark).length;
+   return '<tr><td><strong>'+clean(key)+'</strong> — '+clean(label)+'</td>'+
+    '<td>'+count('A')+'</td><td>'+count('P')+'</td><td>'+count('N')+'</td><td>'+count('NO')+'</td></tr>';
+  }).join('');
+  const writeChart=learningBars(hLabels.map((lab,i)=>[lab,records.filter(r=>r.answers?.H==='H'+(i+1)).length]),n);
+  const readingChart=learningBars(Object.entries(readValues).map(([key,label])=>
+    [label,records.filter(r=>Array.isArray(r.answers?.L)&&r.answers.L.includes(key)).length]),n);
+  const mathChart=learningMathChart(records,mathLabels);
+  const students=records.slice().sort((a,b)=>studentById.get(a.student_id).display_name.localeCompare(studentById.get(b.student_id).display_name,'pt-BR'))
+    .map(r=>{
+      const student=studentById.get(r.student_id),a=r.answers;
+      const h=hLabels[Number(String(a.H||'').replace('H',''))-1]||'A conferir';
+      const reading=Array.isArray(a.L)?a.L.map(x=>readValues[x]).filter(Boolean).join('; '):'';
+      const indicator=mathLabels.map((lab,i)=>{
+       const k='M'+(i+1),mark=String(a[k]||'').slice(k.length+1);
+       return '<tr><td>'+clean(k+' — '+lab)+'</td><td>'+clean(mathValues[mark]||'Não informado')+'</td></tr>';
+      }).join('');
+      return '<details style="border:1px solid #dce6de;border-radius:10px;padding:13px;margin:10px 0;background:#fff">'+
+       '<summary style="cursor:pointer"><strong>'+clean(student.display_name)+'</strong> · '+clean(h)+'</summary>'+
+       '<p class="intro-note" style="margin-top:10px">Registro oficial do ciclo de 2026, conforme a ficha conferida.</p>'+
+       '<div class="tablewrap"><table><tbody>'+
+       '<tr><th style="width:43%">Hipótese de escrita</th><td>'+clean(h)+'</td></tr>'+
+       '<tr><th>Habilidades de leitura</th><td>'+clean(reading||'Nenhuma habilidade marcada')+'</td></tr>'+
+       '<tr><th>Leitura de texto de memória</th><td>'+clean(memories[a.T1]||'A conferir')+'</td></tr>'+
+       '<tr><th>Leitura de texto narrativo</th><td>'+clean(narratives[a.T2]||'A conferir')+'</td></tr>'+
+       indicator+'</tbody></table></div></details>';
+    }).join('');
+  body='<div class="twocol"><article class="card"><h2>Hipóteses de escrita</h2>'+
+   '<p>Quantidade de estudantes entre as '+n+' avaliações publicadas.</p>'+
+   writeChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Hipótese</th><th>Alunos</th></tr></thead><tbody>'+distribution+'</tbody></table></div></article>'+
+   '<article class="card"><h2>Leitura dos resultados</h2>'+
+   '<p>Estes dados mostram o que já foi registrado nas fichas da turma. Não substituem a análise das produções e observações da professora.</p>'+
+   '<p><strong>'+n+' de '+enrolled+' estudantes</strong> possuem avaliações publicadas ('+percent+'%).</p>'+
+   '<p>Para construir um panorama representativo da turma, ainda é necessário registrar os demais estudantes. Os que não possuem avaliação não devem ser classificados como “não alcançou”.</p></article></div>'+
+   '<div class="card"><h2>Habilidades de leitura — gráfico</h2>'+
+   '<p>Quantidade de estudantes que demonstraram cada habilidade nas fichas publicadas. Uma criança pode aparecer em várias habilidades.</p>'+
+   readingChart+'</div>'+
+   '<div class="card"><h2>Matemática — indicadores M1 a M7</h2><p>Quantidade de estudantes por situação, considerando somente as '+n+' avaliações publicadas. A: resposta adequada com autonomia; P: desempenho parcial ou com ajuda; N: não demonstrou na atividade; NO: não observado.</p>'+
+   mathChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Indicador</th><th>A · Autonomia</th><th>P · Parcial/apoio</th><th>N · Não demonstrou</th><th>NO · Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
+   '<div class="card"><h2>Registros individuais da turma</h2><p>Abra um estudante para consultar os conhecimentos e habilidades registrados. Visível somente no acesso autorizado.</p>'+students+'</div>';
+ }
+ return '<div class="card"><h2>Painel de resultados por turma</h2>'+
+  '<p><strong>Somente avaliações oficialmente publicadas.</strong> Os dados acompanham os lançamentos e são separados por turma.</p>'+
+  '<label for="resultsClassFilter"><strong>Escolha a turma</strong></label>'+
+  '<select id="resultsClassFilter" style="display:block;width:100%;max-width:430px;padding:11px;margin:10px 0 16px;border:1px solid #ceded6;border-radius:9px">'+options+'</select>'+
+  '<p class="intro-note">Turma '+clean(klass.label)+'. Cobertura parcial: '+n+' de '+enrolled+' estudantes avaliados.</p>'+
+  summary+'<div class="learning-chart"><p class="chart-subtitle">Cobertura da turma: '+n+' de '+enrolled+' estudantes com avaliação oficial.</p>'+
+  '<div class="chart-track chart-coverage" role="img" aria-label="'+clean(percent+'% da turma avaliada')+'"><span class="chart-fill chart-fill--green" style="width:'+Math.max(0,Math.min(100,(enrolled?100*n/enrolled:0))).toFixed(2)+'%"></span></div>'+
+  '<p class="chart-note">A parte ainda não preenchida corresponde a estudantes sem avaliação publicada, não a dificuldades de aprendizagem.</p></div></div>'+body;
+}
+
+function parseDelimited(text,delimiter){
+ const rows=[];let row=[],field='',quoted=false;
+ for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(quoted&&text[i+1]==='"'){field+='"';i++}else quoted=!quoted}
+ else if(ch===delimiter&&!quoted){row.push(field);field=''}
+ else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(field);if(row.some(v=>v.trim()))rows.push(row);row=[];field=''}else field+=ch;}
+ row.push(field);if(row.some(v=>v.trim()))rows.push(row);return rows;
+}
+
+function rendered(){
+ const rows=readRecords();
+ const data={classrooms:labClasses.map(g=>g.klass),students:labClasses.flatMap(g=>g.students),
+ results:rows.map(r=>({student_id:r.student_id,answers:r.answers}))};
+ let rendered=officialResultsDashboard(data);
+ rendered=rendered.replaceAll('avaliações oficiais','fichas fictícias').replaceAll('Avaliações oficiais','Fichas fictícias')
+ .replaceAll('avaliações publicadas','fichas simuladas').replaceAll('avaliação oficial','ficha fictícia')
+ .replaceAll('Somente avaliações oficialmente publicadas.','SOMENTE SIMULAÇÃO LOCAL — sem publicação oficial.')
+ .replaceAll('Registro oficial do ciclo de 2026','Registro fictício de laboratório')
+ .replaceAll('Com conferência concluída','Gerado em simulação');
+ return '<p><strong>'+rows.length+' de 15 fichas fictícias</strong> computadas neste navegador.</p>'+rendered;
+}
+function updateResults(){
+ document.getElementById('results').innerHTML=rendered();
+ const picker=document.getElementById('resultsClassFilter');
+ if(picker)picker.addEventListener('change',e=>{selectedResultsClass=e.target.value;updateResults();});
+}
+function parseCSVData(csv){
+ const bom=csv.replace(/^\ufeff/,'');
+ const r=parseDelimited(bom,';');
+ if(r.length<2)throw Error('CSV sem fichas consolidadas.');
+ const headers=r[0].map(x=>x.trim()),names=['codigo','hipotese','leitura','memoria','narrativo',...Array.from({length:7},(_,i)=>'M'+(i+1))];
+ if(names.some(x=>!headers.includes(x)))throw Error('CSV não corresponde ao modelo do leitor OMR V2.');
+ const unique=new Set(),values=[],initialGroup=null;
+ for(const cells of r.slice(1)){
+  const row=Object.fromEntries(headers.map((key,i)=>[key,cells[i]||'']));
+  const student=roster.get(row.codigo);
+  if(!student)throw Error('O CSV contém QR não pertencente ao laboratório. Não envie fichas reais.');
+  if(unique.has(row.codigo))throw Error('Existe um QR repetido no CSV.');
+  unique.add(row.codigo);
+  if(initialGroup&&initialGroup!==student.classroom_id)throw Error('Cada lote deve conter somente um ano fictício.');
+  initialGroup=student.classroom_id;
+  const answers={H:row.hipotese,T1:row.memoria,T2:row.narrativo,L:String(row.leitura||'').split('|').filter(Boolean)};
+  if(!/^H[1-5]$/.test(String(answers.H))||!/^T1[012]$/.test(String(answers.T1))||
+     !/^T2[012]$/.test(String(answers.T2))||answers.L.some(x=>!/^L[1-7]$/.test(x)))
+      throw Error('Registros de Língua Portuguesa incompletos ou inválidos.');
+  for(let i=1;i<=7;i++){
+   const key='M'+i;answers[key]=row[key];
+   if(!new RegExp('^'+key+'_(A|P|N|NO)$').test(String(row[key])))throw Error('Registro de Matemática inválido em '+key+'.');
+  }
+  values.push({codigo:row.codigo,student_id:student.id,answers});
+ }
+ if(values.length>10)throw Error('O leitor permite até 10 fichas por lote.');
+ return values;
+}
+function addRecords(rows){
+ const dest=new Map(readRecords().map(x=>[x.codigo,x]));
+ rows.forEach(x=>dest.set(x.codigo,x));
+ saveRecords([...dest.values()]);
+ document.getElementById('status').textContent='Foram computadas '+rows.length+' ficha(s) fictícias. Total atual: '+dest.size+'. Nenhuma informação foi enviada ao banco da escola.';
+ selectedResultsClass=roster.get(rows[0].codigo).classroom_id;
+ updateResults();
+}
+function fakeExample(){
+ const entries=[];
+ for(let g=1;g<=5;g++){
+  const student=labClasses[g-1].students[(g-1)%3];
+  const letters=['A','P','N','NO'],answers={
+   H:'H'+g,L:['L1','L'+Math.min(7,g+2)],T1:g%2?'T10':'T11',T2:g%2?'T21':'T20'
+  };
+  for(let i=1;i<=7;i++)answers['M'+i]='M'+i+'_'+letters[(g+i)%4];
+  entries.push({codigo:student.local_reference,student_id:student.id,answers});
+ }
+ addRecords(entries);
+}
+function downloadCSV(){
+ const entries=readRecords();if(!entries.length){alert('Ainda não há fichas fictícias para exportar.');return;}
+ const cols=['codigo','nome_ficticio','turma','hipotese','leitura','memoria','narrativo',...Array.from({length:7},(_,i)=>'M'+(i+1))];
+ const lines=[cols.join(';')];
+ entries.forEach(r=>{
+  const student=roster.get(r.codigo),group=labClasses.find(g=>g.klass.id===student.classroom_id);
+  const values=[r.codigo,student.display_name,group.klass.label,r.answers.H,r.answers.L.join('|'),r.answers.T1,r.answers.T2,...Array.from({length:7},(_,i)=>r.answers['M'+(i+1)])];
+  lines.push(values.map(v=>'"'+String(v||'').replaceAll('"','""')+'"').join(';'));
+ });
+ const link=document.createElement('a'),url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));
+ link.href=url;link.download='LUMINA_Analises_FICTICIAS.csv';link.click();URL.revokeObjectURL(url);
+}
+async function boot(){
+ const gate=document.getElementById('gate'),lab=document.getElementById('lab');
+ try{
+  if(!window.supabase?.createClient)throw Error('Serviço de autenticação indisponível.');
+  const api=window.supabase.createClient('https://qqygivtxxuhjmexvphma.supabase.co','sb_publishable_dk5HEe289BtBz1M6_-RC3g_NtLX1Rhh');
+  const response=await api.auth.getUser();
+  if(response.error||response.data?.user?.id!==LAB_USER)throw Error('Entre primeiro na conta de homologação pelo Painel das Aprendizagens. A conta não precisa ter acesso a nenhuma turma real.');
+  authorized=true;gate.hidden=true;lab.hidden=false;selectedResultsClass='lab-3';updateResults();
+  const grade=document.getElementById('grade');
+  document.getElementById('printOMR').addEventListener('click',()=>{try{const g=labClasses[Number(grade.value)-1];window.LuminaFichas.printSchoolPacket(g.students,g.klass,'correction')}catch(e){alert(e.message)}});
+  document.getElementById('printFull').addEventListener('click',()=>{try{const g=labClasses[Number(grade.value)-1];window.LuminaFichas.printSchoolPacket(g.students,g.klass,'full')}catch(e){alert(e.message)}});
+  document.getElementById('csvFile').addEventListener('change',async e=>{
+   const f=e.target.files?.[0];if(!f)return;
+   try{const rows=parseCSVData(await f.text());addRecords(rows)}
+   catch(error){document.getElementById('status').textContent='Não foi possível incorporar o CSV: '+error.message}
+   e.target.value='';
+  });
+  document.getElementById('loadExample').addEventListener('click',fakeExample);
+  document.getElementById('exportResults').addEventListener('click',downloadCSV);
+  document.getElementById('clearLab').addEventListener('click',()=>{
+   if(confirm('Limpar somente os resultados fictícios deste navegador?')){localStorage.removeItem(KEY);document.getElementById('status').textContent='Simulação local limpa; nenhum dado escolar afetado.';updateResults()}
+  });
+ }catch(error){gate.textContent=error.message+' Volte ao painel e entre com o e-mail de homologação.';}
+}
+window.addEventListener('load',boot);
+</script></body></html>
