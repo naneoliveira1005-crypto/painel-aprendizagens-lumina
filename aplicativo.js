@@ -418,9 +418,9 @@ function formatImportedRow(row,view){
  const answer=row.answers&&typeof row.answers==='object'?row.answers:{};
  const H={H1:'Pré-silábica',H2:'Silábica sem valor',H3:'Silábica com valor',H4:'Silábico-alfabética',H5:'Alfabética'};
  const L={L1:'Reconhece letras',L2:'Lê letras isoladas',L3:'Lê sílabas simples',L4:'Lê sílabas complexas',L5:'Lê palavras',L6:'Lê frases simples',L7:'Lê frases complexas'};
- const T1={T10:'Lê o texto de memória',T11:'Recita o texto de memória',T12:'Não lê o texto de memória'};
+ const T1={T10:'Lê o texto de memória',T11:'Receita',T12:'Não lê o texto de memória'};
  const T2={T20:'Leitura fluente',T21:'Leitura sem fluência',T22:'Não lê o texto narrativo'};
- const math=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Tabelas e gráficos'];
+ const math=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Leitura de dados'];
  const results={A:'Alcançou',P:'Parcialmente',N:'Não alcançou',NO:'Não observado'};
  const line=(label,value)=>'<tr><th style="width:45%">'+clean(label)+'</th><td>'+clean(value||'Sem marcação — verificar')+'</td></tr>';
  const reading=Array.isArray(answer.L)?answer.L.map(key=>L[key]||'').filter(Boolean).join('; '):'';
