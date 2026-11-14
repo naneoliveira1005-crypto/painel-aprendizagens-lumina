@@ -524,7 +524,7 @@ async function confirmImportedReview(id,button){
  if(!row||row.validation_status!=='awaiting_pedagogical_review')return;
  const student=loaded.students.find(s=>s.id===row.student_id&&s.active&&s.local_reference===row.qr_code);
  if(!student)return;
- if(!window.confirm('Você comparou a ficha ORIGINAL de '+student.display_name+' com os resultados exibidos, incluindo todos os X? Esta ação registra apenas a CONFERÊNCIA PEDAGÓGICA, sem publicar resultados.'))return;
+ if(!window.confirm('Você comparou a ficha ORIGINAL de '+student.display_name+' com os resultados exibidos, incluindo todos os quadradinhos preenchidos? Esta ação registra apenas a CONFERÊNCIA PEDAGÓGICA, sem publicar resultados.'))return;
  button.disabled=true;button.textContent='Registrando conferência...';
  const previousUser=profile.user_id;
  try{
