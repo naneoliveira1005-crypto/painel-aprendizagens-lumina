@@ -302,20 +302,20 @@ function assessments(d){
    <li><span><strong>Escrita de palavras</strong><br><small>5 palavras de um mesmo campo semântico: 1 polissílaba, 1 trissílaba, 2 dissílabas e 1 monossílaba</small></span></li>
    <li><span><strong>Escrita de uma frase</strong><br><small>Produção escrita para observar as hipóteses e relações entre fala e escrita</small></span></li>
    <li><span><strong>Leitura</strong><br><small>Um texto de memória e um texto simples, observando a autonomia leitora</small></span></li>
-   <li><span><strong>Registro docente</strong><br><small>Marcação com X dos conhecimentos já demonstrados e dos que precisam de acompanhamento</small></span></li>
+   <li><span><strong>Registro docente</strong><br><small>Pintura completa dos quadradinhos da ficha OMR V2, conforme as aprendizagens observadas</small></span></li>
    </ul></article>
    <article class="card"><h2>Matemática</h2><p>Instrumento breve — 1º ao 5º ano, com gradação de complexidade.</p><ul class="eyelist">
    <li><span>Contagem e quantificação</span></li>
    <li><span>Leitura e escrita de números</span></li>
    <li><span>Composição e decomposição no sistema decimal</span></li>
-   <li><span>Comparação e ordenação de quantidades e números</span></li>
+   <li><span>Sequências numéricas e leitura de dados (itens efetivamente presentes no instrumento)</span></li>
    <li><span>Problemas de adição e subtração</span></li>
    <li><span>Noções de multiplicação e divisão nos anos pertinentes</span></li>
    </ul></article>
  </div>
  <div class="card"><h2>Preparação para os registros</h2>
  <p><strong>Etapa atual:</strong> aplicação e digitalização das fichas, conferência pedagógica e publicação controlada. Os resultados oficiais aparecem no painel por turma acima.</p>
- <p class="intro-note">Fluxo atual: preencher a ficha → leitura local dos X → conferência da matrícula e dos registros → autorização da coordenação → visualização por turma. As fotografias originais não são armazenadas neste piloto.</p></div>
+ <p class="intro-note">Fluxo atual: preencher os quadradinhos da ficha OMR → leitura óptica local → conferência da matrícula e dos registros → autorização da coordenação → visualização por turma. As fotografias originais não são armazenadas neste piloto.</p></div>
  ${studentSection}`;
 }
 
