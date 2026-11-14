@@ -35,6 +35,12 @@ const demoData={
 function cardKpi(number,label,subtitle=''){return `<div class="kpi"><span class="num">${clean(number)}</span><span class="label">${clean(label)}</span>${subtitle?`<span class="caption">${clean(subtitle)}</span>`:''}</div>`;}
 function chip(status){let t=status==='open'?'Aberta':status==='draft'?'Rascunho':status==='closed'?'Fechada':status==='review'?'Em conferência':status==='completed'?'Concluído':status==='pending'?'Pendente':status==='active'?'Ativa':status||'Pendente'; return `<span class="chip ${status==='review'||status==='pending'?'warn':''}">${clean(t)}</span>`;}
 function notice(msg,cls=''){return `<div class="notice ${cls}">${msg}</div>`;}
+function archivedBatchStatus(b,view){
+ const rows=(view.importRows||[]).filter(r=>r.batch_id===b.id);
+ return b.status==='failed'&&rows.length>0&&rows.every(r=>r.validation_status==='rejected'&&
+   String(r.validation_note||'').startsWith('ARQUIVADO COMO TESTE EM 2026-11-14'));
+}
+function batchStatusChip(b,view){return archivedBatchStatus(b,view)?'<span class="chip grey">Arquivado · teste</span>':chip(b.status);}
 function selectedData(){return mode==='demo'?demoData:loaded;}
 function render(){
  if(mode==='guest')return;
@@ -67,7 +73,7 @@ function render(){
 }
 function home(d){
  let cycleCount=d.cycles.length, classCount=d.classrooms.length, studentCount=d.students.length, resultCount=d.results.length;
- const pendingValidation=d.importRows.filter(r=>r.validation_status!=='committed').length;
+ const pendingValidation=d.importRows.filter(r=>['awaiting_enrollment_confirmation','awaiting_pedagogical_review','ready_for_commit'].includes(r.validation_status)).length;
  const realWarning=mode==='live'?notice('Existem <strong>'+pendingValidation+' ficha(s) aguardando conferência</strong> e <strong>'+d.results.length+' avaliação(ões) oficiais</strong> disponíveis neste perfil. A publicação exige conferência pedagógica e autorização da coordenação.','info'):notice('As informações abaixo são fictícias ou estruturais para prévia de navegação. Nenhuma criança real é identificada.','info');
  const classLines=d.classrooms.slice(0,5).map(c=>`<li><span><b>${clean(c.label)}</b><br><small>${clean(shiftLabel[c.shift]||c.shift)}</small></span><span class="chip grey">${mode==='demo'?'Exemplo':'Cadastrada'}</span></li>`).join('');
  let graph='';
@@ -453,7 +459,7 @@ function importedReviewPanel(view){
  if(mode!=='live'||role!=='pedagogical_admin')return '';
  const items=view.importRows.filter(r=>['awaiting_pedagogical_review','ready_for_commit','committed'].includes(r.validation_status));
  const linked=items.filter(r=>view.students.some(s=>s.id===r.student_id&&s.active&&s.local_reference===r.qr_code));
- const missing=view.importRows.filter(r=>!r.student_id).length;
+ const missing=view.importRows.filter(r=>!r.student_id&&r.validation_status!=='rejected').length;
  const grouped=view.batches.map(b=>{
   const rows=linked.filter(r=>r.batch_id===b.id);
   if(!rows.length)return '';
@@ -561,7 +567,7 @@ function batches(d){
   const ownBatches=(d.batches||[]).slice().reverse();
   const rows=ownBatches.map(b=>
     '<tr><td>'+clean((d.classrooms||[]).find(c=>c.id===b.classroom_id)?.label||'Turma')+
-    '</td><td>'+clean(b.expected_rows||0)+'</td><td>'+chip(b.status)+'</td></tr>').join('');
+    '</td><td>'+clean(b.expected_rows||0)+'</td><td>'+batchStatusChip(b,d)+'</td></tr>').join('');
   return reader+
    '<div class="card"><h2>2. Confirmação do envio</h2>'+
    '<p>Depois de conferir a leitura, clique em <strong>Consolidar fichas válidas</strong> e em <strong>Enviar e salvar lote para conferência</strong>. Aguarde a mensagem <strong>LOTE SALVO</strong>. A coordenação fará a conferência pedagógica e autorizará a publicação.</p>'+
@@ -575,7 +581,7 @@ function batches(d){
   const batchList=(d.batches||[]).map(b=>
    '<tr><td>'+clean(b.source_filename||'Lote de leitura')+'</td><td>'+
    clean((d.classrooms||[]).find(c=>c.id===b.classroom_id)?.label||'—')+'</td><td>'+
-   clean(b.expected_rows??'—')+'</td><td>'+chip(b.status)+'</td></tr>').join('');
+   clean(b.expected_rows??'—')+'</td><td>'+batchStatusChip(b,d)+'</td></tr>').join('');
   extras=
    '<div class="card"><h2>2. Conferir vínculo com a matrícula</h2>'+
    '<p>Confira as marcações, clique em <strong>Consolidar fichas válidas</strong> e depois <strong>Enviar e salvar lote para conferência</strong>. Aguarde a mensagem <strong>LOTE SALVO</strong> antes de mudar de página. Nada será publicado oficialmente.</p>'+
