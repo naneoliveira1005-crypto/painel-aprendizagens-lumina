@@ -17,6 +17,7 @@ let selectedRosterClass='';
 let rosterReviewMessage='';
 let pilotCandidate=null;
 let pilotStageMessage='';
+let pedagogicalReviewMessage=''; // Mensagens de revisão pedagógica; nunca publicar resultados automaticamente.
 let transferDraft=null; // apenas memória da sessão da coordenação; nunca armazenar dados dos alunos no navegador permanentemente
 let loaded={classrooms:[],students:[],results:[],cycles:[],staff:[],staffLinks:[],batches:[],importRows:[]};
 const demoClasses=[
