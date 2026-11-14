@@ -148,3 +148,9 @@ Correção no frontend (`aplicativo.js?v=20261111-corrigir-retorno-login-v35`): 
 - Verificação após migração: política INSERT/UPDATE agora exige `app_private.has_school_role(..., ['pedagogical_admin'])`; Ana Rita (teacher) retorna `may_write_official=false`, Priscila (admin) `true`. 0 registros oficiais, 14 testes arquivados e 3 professoras ativas mantidos. Não foi publicado nenhum resultado.
 - Não há sessão de professora ativa disponível no navegador automatizado conectado; por segurança, não se deve simular que o teste no navegador real foi concluído. A validação final do login, navegação e envio de uma professora requer a própria docente (Ana Rita, Cirlene ou Roseli) entrar pelo acesso pessoal, sem compartilhar senha nem links de autenticação.
 - Atenção ao material pedagógico: texto de memória e suas opções impressas são **Lê / Recita / Não lê** (T11=Recita); a palavra “Receita” foi erro anterior de rótulo, corrigido no GitHub. Priscila deve homologar didaticamente os instrumentos antes da aplicação.
+
+### Homologação física do modelo OMR V2 — 14/11/2026
+- Priscila comunicou a conclusão da conferência física de **uma ficha fictícia de teste, impressa em A4**.
+- Respostas da coordenação: (1) folha inteira sem cortes: **sim**; (2) QR Code e quatro referências de alinhamento visíveis: **sim**; (3) textos, LP e M1–M7 nítidos e legíveis: **sim**; (4) quadradinhos bem posicionados e fáceis de preencher: **sim**.
+- **Decisão:** homologação física do layout **APROVADA**, sem correções de impressão identificadas nessa amostra. Evidência: declaração da coordenação; não confundir com verificação independente da impressão física.
+- **Sem publicação de dados**, alteração de cadastros ou avaliação real. Permanecem pendentes: homologação pedagógica dos instrumentos 1º–5º, navegação em uma conta docente real, demais cinco ativações, aplicação e publicação controlada dos primeiros lotes reais.
