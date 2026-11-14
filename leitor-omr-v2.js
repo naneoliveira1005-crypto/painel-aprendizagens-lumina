@@ -36,9 +36,9 @@ function homography(pts){
  return (x,y)=>{const d=coeff[6]*x+coeff[7]*y+1;
   return {x:(coeff[0]*x+coeff[1]*y+coeff[2])/d,y:(coeff[3]*x+coeff[4]*y+coeff[5])/d};};
 }
-function measure(gray,W,H){
+function measure(gray,W,H,cutoff=135){
  const bw=new Uint8Array(W*H);
- for(let i=0;i<bw.length;i++)bw[i]=gray[i]<135?1:0;
+ for(let i=0;i<bw.length;i++)bw[i]=gray[i]<cutoff?1:0;
  const checked=new Uint8Array(W*H),q=new Int32Array(W*H),components=[];
  const maxArea=W*H*.09;
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
@@ -91,7 +91,7 @@ function chooseAnchors(parts,W,H,gray){
  const predicted={cx:tr.cx+(bl.cx-br.cx)*widthRatio,
   cy:tr.cy+(bl.cy-br.cy)*widthRatio};
  const near=candidates.filter(q=>zones[0](q)&&
-  Math.abs(q.cx-predicted.cx)<W*.035&&Math.abs(q.cy-predicted.cy)<H*.035)
+  Math.abs(q.cx-predicted.cx)<W*.10&&Math.abs(q.cy-predicted.cy)<H*.075)
   .sort((a,b)=>Math.hypot(a.cx-predicted.cx,a.cy-predicted.cy)-
                      Math.hypot(b.cx-predicted.cx,b.cy-predicted.cy));
  if(near.length)chosen[0]=near[0];
@@ -120,8 +120,14 @@ function chooseAnchors(parts,W,H,gray){
 
 function scanGray(gray,W,H){
  if(!gray||gray.length!==W*H||W<350||H<480)return {aligned:false,reason:'resolution'};
- const {components}=measure(gray,W,H);
- const corners=chooseAnchors(components,W,H,gray);
+ let corners=null;
+ // Fallback de contraste para fotos: só aceita quatro marcos geométricos reais.
+ // Não altera os limiares de leitura das respostas nem inventa campos ausentes.
+ for(const threshold of [135,155,175,115]){
+  const {components}=measure(gray,W,H,threshold);
+  corners=chooseAnchors(components,W,H,gray);
+  if(corners)break;
+ }
  if(!corners)return {aligned:false,reason:'registration_markers',found:components.length};
  const map=homography(corners);
  if(!map)return {aligned:false,reason:'perspective'};
@@ -169,5 +175,5 @@ function scan(canvas){
   gray[j]=Math.round(pixels[p]*.299+pixels[p+1]*.587+pixels[p+2]*.114);
  return scanGray(gray,W,H);
 }
-window.LuminaOMRv2={scan,scanGray,version:'2026-omr-v2',markers:marks,fields};
+window.LuminaOMRv2={scan,scanGray,version:'2026-omr-v2-marker-recovery-20261114',markers:marks,fields};
 })();
