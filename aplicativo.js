@@ -112,7 +112,7 @@ function learningBars(items,denominator){
 function learningMathChart(records,mathLabels){
  const n=records.length;
  if(!n)return '';
- const legend=[['level-a','Alcançou'],['level-p','Parcialmente'],['level-n','Não alcançou'],['level-no','Não observado']]
+ const legend=[['level-a','A · Autonomia'],['level-p','P · Parcial/com apoio'],['level-n','N · Não demonstrou na atividade'],['level-no','NO · Não observado']]
   .map(([theme,label])=>'<span class="chart-legend-item"><span class="chart-legend-swatch '+theme+'"></span>'+label+'</span>').join('');
  const bar=mathLabels.map((label,i)=>{
   const key='M'+(i+1);
@@ -152,7 +152,7 @@ function officialResultsDashboard(d){
  const percent=enrolled?Math.round(n*100/enrolled):0;
  const hLabels=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'];
  const mathLabels=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Leitura de dados'];
- const mathValues={A:'Alcançou',P:'Parcialmente',N:'Não alcançou',NO:'Não observado'};
+ const mathValues={A:'Demonstrou com autonomia e resposta adequada',P:'Demonstrou parcialmente ou com ajuda',N:'Não demonstrou nesta atividade',NO:'Não observado'};
  const memories={T10:'Lê',T11:'Recita',T12:'Não lê'};
  const narratives={T20:'Lê com fluência',T21:'Lê sem fluência',T22:'Não lê'};
  const readValues={L1:'Reconhece letras',L2:'Lê letras isoladas',L3:'Lê sílabas simples',L4:'Lê sílabas complexas',L5:'Lê palavras',L6:'Lê frases simples',L7:'Lê frases complexas'};
@@ -207,8 +207,8 @@ function officialResultsDashboard(d){
    '<div class="card"><h2>Habilidades de leitura — gráfico</h2>'+
    '<p>Quantidade de estudantes que demonstraram cada habilidade nas fichas publicadas. Uma criança pode aparecer em várias habilidades.</p>'+
    readingChart+'</div>'+
-   '<div class="card"><h2>Matemática — indicadores M1 a M7</h2><p>Quantidade de estudantes por situação, considerando somente as '+n+' avaliações publicadas.</p>'+
-   mathChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Indicador</th><th>Alcançou</th><th>Parcialmente</th><th>Não alcançou</th><th>Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
+   '<div class="card"><h2>Matemática — indicadores M1 a M7</h2><p>Quantidade de estudantes por situação, considerando somente as '+n+' avaliações publicadas. A: resposta adequada com autonomia; P: desempenho parcial ou com ajuda; N: não demonstrou na atividade; NO: não observado.</p>'+
+   mathChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Indicador</th><th>A · Autonomia</th><th>P · Parcial/apoio</th><th>N · Não demonstrou</th><th>NO · Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
    '<div class="card"><h2>Registros individuais da turma</h2><p>Abra um estudante para consultar os conhecimentos e habilidades registrados. Visível somente no acesso autorizado.</p>'+students+'</div>';
  }
  return '<div class="card"><h2>Painel de resultados por turma</h2>'+
@@ -429,7 +429,7 @@ function formatImportedRow(row,view){
  const T1={T10:'Lê o texto de memória',T11:'Recita o texto de memória',T12:'Não lê o texto de memória'};
  const T2={T20:'Leitura fluente',T21:'Leitura sem fluência',T22:'Não lê o texto narrativo'};
  const math=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Leitura de dados'];
- const results={A:'Alcançou',P:'Parcialmente',N:'Não alcançou',NO:'Não observado'};
+ const results={A:'Demonstrou com autonomia e resposta adequada',P:'Demonstrou parcialmente ou com ajuda',N:'Não demonstrou nesta atividade',NO:'Não observado'};
  const line=(label,value)=>'<tr><th style="width:45%">'+clean(label)+'</th><td>'+clean(value||'Sem marcação — verificar')+'</td></tr>';
  const reading=Array.isArray(answer.L)?answer.L.map(key=>L[key]||'').filter(Boolean).join('; '):'';
  const language=line('Hipótese de escrita',H[answer.H])+line('Habilidades de leitura',reading)+
