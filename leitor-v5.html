@@ -1048,6 +1048,12 @@ window.addEventListener('message',event=>{
 $('csv').onclick=()=>{const rows=Array.from(consolidated.values());if(!rows.length)return;const cols=['codigo','arquivo','hipotese','leitura','memoria','narrativo',...Array.from({length:7},(_,i)=>'M'+(i+1))];
  const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';const csv='\ufeff'+[cols.join(';'),...rows.map(r=>cols.map(c=>escape(r[c])).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='LUMINA_leitura_em_lote_VALIDACAO_LOCAL.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
 };
+if(new URLSearchParams(window.location.search).get('lab')==='1'){
+ const note=document.querySelector('.note');
+ if(note)note.innerHTML='<strong>LABORATÓRIO FICTÍCIO.</strong> O leitor óptico funciona como no painel real, porém os resultados não serão enviados ao banco da escola. Após consolidar, clique em <strong>Exportar CSV validado</strong> e importe-o na etapa 3 do laboratório.';
+ const handoff=$('handoff');if(handoff)handoff.style.display='none';
+ const guidance=$('exportInfo');if(guidance)guidance.textContent='Modo laboratório: consolide fichas e exporte CSV. Não há salvamento no Supabase.';
+}
 renderList();
 </script>
 <!-- A digitalização, a leitura QR e a validação dos preenchimentos permanecem em um único fluxo para impedir falsos positivos e processamento duplicado. -->
