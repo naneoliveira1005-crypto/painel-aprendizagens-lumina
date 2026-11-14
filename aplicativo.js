@@ -151,7 +151,7 @@ function officialResultsDashboard(d){
  const n=records.length;
  const percent=enrolled?Math.round(n*100/enrolled):0;
  const hLabels=['Pré-silábica','Silábica sem valor','Silábica com valor','Silábico-alfabética','Alfabética'];
- const mathLabels=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Tabelas e gráficos'];
+ const mathLabels=['Contagem e quantificação','Leitura e escrita de números','Sistema decimal','Adição e subtração','Grupos iguais e repartição','Sequências e regularidades','Leitura de dados'];
  const mathValues={A:'Alcançou',P:'Parcialmente',N:'Não alcançou',NO:'Não observado'};
  const memories={T10:'Lê',T11:'Recita',T12:'Não lê'};
  const narratives={T20:'Lê com fluência',T21:'Lê sem fluência',T22:'Não lê'};
