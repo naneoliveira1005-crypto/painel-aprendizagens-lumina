@@ -204,3 +204,11 @@ Correção no frontend (`aplicativo.js?v=20261111-corrigir-retorno-login-v35`): 
 - Conferência posterior: 449 matrículas, 16 turmas, 8 professoras planejadas, 16 vínculos docentes previstos e 0 resultados oficiais — inalterados.
 - **Pendente:** usuário deve abrir o e-mail no próprio dispositivo, clicar apenas uma vez no link individual, ver se entra no painel e se a aba "Leitura de fichas" abre. Esta conta não permitirá selecionar alunos nem enviar fichas reais, intencionalmente.
 - **Após testar, desativar/remover o perfil temporário** em `staff_profiles` e, se possível por fluxo administrativo próprio do Auth, encerrar também o acesso Auth experimental. Não modificar/afetar contas de professoras reais.
+
+### Autenticação da identidade temporária confirmada — 14/11/2026
+- Usuária confirmou que entrou normalmente com o e-mail de homologação, sem senha de professora. Consulta posterior em `auth.users` confirmou `email_confirmed_at` preenchido e `last_sign_in_at` não nulo. **Fluxo real de autenticação por e-mail está validado para a identidade experimental.**
+- Identidade de teste no `staff_profiles` continua como `teacher`, ativa e com identificação inequívoca de teste, **sem vínculo em `staff_directory` ou `staff_classrooms`**.
+- Nova simulação RLS autenticada/READ ONLY retornou 0 matrículas, 0 turmas, 0 resultados oficiais, 0 lotes e 0 linhas de importação. O acesso real à informação dos alunos não foi usado.
+- Inspeção de `aplicativo.js` com dados vazios e papel de professora: a aba `Leitura de fichas` produz o iframe `leitor-v5.html`, o título `1. Enviar ficha preenchida` e a mensagem `Nenhum lote enviado`, sem controles de publicação; validação de sintaxe JS aprovada.
+- Conferência pós-login: 449 matrículas, 16 turmas, oito professoras oficiais, 0 resultados oficiais, 0 linhas em revisão e 14 pilotos arquivados; intactos.
+- **Pendente para encerramento do acesso temporário:** usuária confirmar que clicou na aba `Leitura de fichas` no seu navegador e viu o leitor. Depois disso, desativar imediatamente o perfil temporário de `staff_profiles`. Sem reproduzir acesso docente a dados reais; a verificação de cada conta docente real continua pendente.
