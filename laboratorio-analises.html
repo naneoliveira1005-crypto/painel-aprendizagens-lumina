@@ -238,7 +238,7 @@ function parseCSVData(csv){
  if(r.length<2)throw Error('CSV sem fichas consolidadas.');
  const headers=r[0].map(x=>x.trim()),names=['codigo','hipotese','leitura','memoria','narrativo',...Array.from({length:7},(_,i)=>'M'+(i+1))];
  if(names.some(x=>!headers.includes(x)))throw Error('CSV não corresponde ao modelo do leitor OMR V2.');
- const unique=new Set(),values=[],initialGroup=null;
+ const unique=new Set(),values=[];let initialGroup=null;
  for(const cells of r.slice(1)){
   const row=Object.fromEntries(headers.map((key,i)=>[key,cells[i]||'']));
   const student=roster.get(row.codigo);
