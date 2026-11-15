@@ -1,5 +1,6 @@
-
-/* Navegação visual da capa — preserva a autenticação e as telas originais. */
+/* Navegação da capa pública e privada do Painel das Aprendizagens.
+   Não altera autenticação, permissões, leitor ou gravação dos resultados.
+   A capa continua acessível durante uma sessão autenticada. */
 (function(){
  "use strict";
  const $=id=>document.getElementById(id);
@@ -7,51 +8,79 @@
  const access=$('btnHeaderAccess'),logout=$('btnLogout');
  const headLinks=Array.from(document.querySelectorAll('[data-head-page]'));
  if(!landing||!login||!app)return;
- // Evita um ciclo de MutationObserver: só altera a classe quando o estado muda.
+
+ // A página inicial é a primeira vista, inclusive quando o Supabase restaura uma sessão.
+ // appView mantém sua classe de autenticação intacta; o CSS só troca o que é exibido.
+ let showLandingForSignedIn=true;
  function setHidden(el,hidden){
    if(el&&el.classList.contains('hidden')!==hidden)el.classList.toggle('hidden',hidden);
  }
  function sync(){
-   const active=!app.classList.contains('hidden');
+   const signedIn=!app.classList.contains('hidden');
    const authenticating=!login.classList.contains('hidden');
-   if(active){setHidden(landing,true);setHidden(login,true);}
-   else if(authenticating){setHidden(landing,true);}
-   else{setHidden(landing,false);}
-   setHidden(access,active);
-   if(!active)setHidden(logout,true);
-   const current=active?document.querySelector('.nav-btn.current')?.dataset.page:'visao';
-   for(const b of headLinks)b.classList.toggle('is-current',b.dataset.headPage===current);
+   const showHome=signedIn?showLandingForSignedIn:!authenticating;
+
+   setHidden(landing,!showHome);
+   if(signedIn)setHidden(login,true);
+   document.body.classList.toggle('landing-home-mode',signedIn&&showHome);
+
+   // Na capa com sessão ativa, um botão abre o painel sem solicitar login novamente.
+   setHidden(access,signedIn&&!showHome);
+   if(access){
+     const label=signedIn?'♙ Abrir painel':'♙ Acessar';
+     if(access.textContent!==label)access.textContent=label;
+   }
+   if(!signedIn)setHidden(logout,true);
+
+   const current=showHome?'home':signedIn?document.querySelector('.nav-btn.current')?.dataset.page:'home';
+   for(const b of headLinks){
+     const selected=b.dataset.headPage===current;
+     if(b.classList.contains('is-current')!==selected)b.classList.toggle('is-current',selected);
+   }
  }
- function toLogin(target){
-   if(!app.classList.contains('hidden'))return navigate(target||'visao');
-   landing.classList.add('hidden');login.classList.remove('hidden');sync();
-   window.scrollTo({top:0,behavior:'instant'});
-   window.requestAnimationFrame(()=>{if(target&&$('teacherMagicEmail'))$('teacherMagicEmail').focus({preventScroll:true});});
- }
- function toLanding(){
-   if(!app.classList.contains('hidden'))return navigate('visao');
-   login.classList.add('hidden');landing.classList.remove('hidden');sync();
-   window.scrollTo({top:0,behavior:'instant'});
- }
- function navigate(target){
-   const button=document.querySelector('.nav-btn[data-page="'+target+'"]');
-   if(button&&!app.classList.contains('hidden'))button.click();
-   else toLogin(target);
+ function toPanel(target){
+   const destination=target||'visao';
+   if(app.classList.contains('hidden')){
+     showLandingForSignedIn=false;
+     setHidden(landing,true);
+     setHidden(login,false);
+     sync();
+     window.scrollTo({top:0,behavior:'instant'});
+     return;
+   }
+   showLandingForSignedIn=false;
+   // Se a aba já estava selecionada, mesmo assim remover o modo capa.
+   const button=document.querySelector('.nav-btn[data-page="'+destination+'"]');
+   if(button)button.click();
    sync();
+   window.scrollTo({top:0,behavior:'instant'});
  }
- access?.addEventListener('click',()=>toLogin());
+ function toHome(){
+   if(!app.classList.contains('hidden')){
+     showLandingForSignedIn=true;
+   }else{
+     setHidden(login,true);
+   }
+   sync();
+   window.scrollTo({top:0,behavior:'instant'});
+ }
+
+ access?.addEventListener('click',()=>toPanel('visao'));
  document.querySelectorAll('[data-public-action]').forEach(b=>b.addEventListener('click',()=>{
-   const target=b.dataset.publicAction;
-   if(target==='home')toLanding();
-   else if(target==='login')toLogin();
-   else navigate(target);
+   const dest=b.dataset.publicAction;
+   if(dest==='home')toHome();
+   else if(dest==='login')toPanel('visao');
+   else toPanel(dest);
  }));
  headLinks.forEach(b=>b.addEventListener('click',()=>{
    const page=b.dataset.headPage;
-   if(page==='home')toLanding();
-   else navigate(page);
+   if(page==='home')toHome();else toPanel(page);
  }));
- document.querySelectorAll('[data-back-to-landing]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();toLanding();}));
+ document.querySelectorAll('[data-back-to-landing]').forEach(b=>b.addEventListener('click',e=>{
+   e.preventDefault();toHome();
+ }));
+ // Observa apenas transições reais de autenticação e de página.
+ // O sync não modifica essas classes quando já estão no estado pretendido.
  const watcher=new MutationObserver(sync);
  watcher.observe(app,{attributes:true,attributeFilter:['class']});
  watcher.observe(login,{attributes:true,attributeFilter:['class']});
