@@ -272,3 +272,10 @@ Correção no frontend (`aplicativo.js?v=20261111-corrigir-retorno-login-v35`): 
 - Teste de estados em memória passou nas transições visitante → sessão docente restaurada → Fichas → Início → Acessar painel → sair → Início; validação JS OK.
 - **Teste no navegador publicado, apenas modo Demonstração:** foto e título exibidos; acesso à demonstração; Fichas → Início exibiu novamente capa e foto → Turmas sem tela branca, sem pedir login, sem expor estudantes e sem gravação. A sessão real da usuária não foi acessada no navegador de testes.
 - Não foram alterados dados, matrículas, QR Codes, arquivos de ficha, banco Supabase, políticas ou fluxo OMR. Sem resultados publicados.
+
+### Refinamento final da fotografia da capa (15/11/2026)
+- Após usuária apontar deformação e perda de nitidez da imagem da professora e das crianças negras, foi **substituído o recurso pequeno de 400×246 px** por `foto-capa-escola-hd.webp`, **1.100×620 px e 41.708 bytes**, reproduzindo a mesma cena aprovada na proposta visual. O arquivo anterior foi mantido no repositório para histórico; há também um arquivo AVIF opcional.
+- `capa-nova.css` recebeu CSS final de enquadramento **`object-fit: cover`**, tamanho proporcional e `object-position` responsivo; na versão móvel a imagem ocupa uma faixa de 265 px com corte central, sem estiramento.
+- `index.html` passou a carregar a fotografia HD e a nova versão de cache `capa-nova.css?v=20261115-foto-hd-proporcao-v4`. Corrigido o atributo intrínseco de `height` para **620 px** (era 678 em uma primeira atualização, sem alterar o arquivo de imagem).
+- Teste de navegador **público/sem login** confirmou fotografia HD correta, nítida e sem estiramento, ausência de retângulo dourado vazio, escola escrita corretamente e cinco comandos presentes. Conferência em viewport celular físico ainda não realizada pela equipe; CSS responsivo foi ajustado.
+- Nenhum dado escolar, instrumento, gabarito, leitor OMR, autenticação ou política Supabase foi alterado; apenas arte e CSS da capa.
