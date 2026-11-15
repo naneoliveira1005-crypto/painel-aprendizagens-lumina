@@ -7,14 +7,18 @@
  const access=$('btnHeaderAccess'),logout=$('btnLogout');
  const headLinks=Array.from(document.querySelectorAll('[data-head-page]'));
  if(!landing||!login||!app)return;
+ // Evita um ciclo de MutationObserver: só altera a classe quando o estado muda.
+ function setHidden(el,hidden){
+   if(el&&el.classList.contains('hidden')!==hidden)el.classList.toggle('hidden',hidden);
+ }
  function sync(){
    const active=!app.classList.contains('hidden');
    const authenticating=!login.classList.contains('hidden');
-   if(active){landing.classList.add('hidden');login.classList.add('hidden');}
-   else if(authenticating){landing.classList.add('hidden');}
-   else{landing.classList.remove('hidden');}
-   access?.classList.toggle('hidden',active);
-   if(!active)logout?.classList.add('hidden');
+   if(active){setHidden(landing,true);setHidden(login,true);}
+   else if(authenticating){setHidden(landing,true);}
+   else{setHidden(landing,false);}
+   setHidden(access,active);
+   if(!active)setHidden(logout,true);
    const current=active?document.querySelector('.nav-btn.current')?.dataset.page:'visao';
    for(const b of headLinks)b.classList.toggle('is-current',b.dataset.headPage===current);
  }
