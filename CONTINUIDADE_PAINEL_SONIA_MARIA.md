@@ -264,3 +264,11 @@ Correção no frontend (`aplicativo.js?v=20261111-corrigir-retorno-login-v35`): 
 - Nova verificação independente **ao vivo após correção CSS**: foto sem rosto alongado ou imagem esticada; escola e menus legíveis; comandos `Acessar`, `Início`, `Fichas`, `Equipe` responderam sem travar. Modo sem autenticação preservou proteção de dados.
 - **Não houve necessidade de restaurar a versão anterior**, já que a falha pôde ser isolada e corrigida sem alterar funcionalidade pedagógica. Checkpoint `checkpoint-pre-aplicacao-2026-11-16` continua disponível.
 - **Pendente apenas validação visual no Chrome e no celular da usuária**, especialmente para confirmar o comportamento com cache local e a nitidez subjetiva. Nunca declarar a versão antiga como publicada depois dessa correção.
+
+### Correção de navegação: capa permanece acessível com sessão ativa (14/11/2026)
+- Usuária percebeu que a imagem da professora e das crianças piscava e desaparecia, e a página abria automaticamente **Leitura de fichas**, pois seu navegador tinha sessão docente válida. **Não era falha do arquivo de foto**; era regra da capa que escondia `landingView` quando `appView` aparecia.
+- Corrigido `capa-nova.js`: capa permanece acessível quando uma sessão é restaurada; o botão **Início** mostra a capa novamente durante a sessão ativa; **Fichas**, **Turmas** e o botão **Acessar o painel** voltam à área privada sem obrigar logout/login; a autenticação permanece a mesma. A aplicação continua autorizada, com exibição alternada por CSS `body.landing-home-mode #appView`, sem mudar a classe `hidden` lógica de autenticação.
+- CSS `capa-nova.css` atualizado e recursos com versionamento `20261114-capa-autenticada-v3` em `index.html`, para evitar cache da versão antiga.
+- Teste de estados em memória passou nas transições visitante → sessão docente restaurada → Fichas → Início → Acessar painel → sair → Início; validação JS OK.
+- **Teste no navegador publicado, apenas modo Demonstração:** foto e título exibidos; acesso à demonstração; Fichas → Início exibiu novamente capa e foto → Turmas sem tela branca, sem pedir login, sem expor estudantes e sem gravação. A sessão real da usuária não foi acessada no navegador de testes.
+- Não foram alterados dados, matrículas, QR Codes, arquivos de ficha, banco Supabase, políticas ou fluxo OMR. Sem resultados publicados.
