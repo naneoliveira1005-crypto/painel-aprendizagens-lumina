@@ -294,11 +294,12 @@ function assessments(d){
     (packetStudentOptions||'<option value="">Nenhum estudante disponível</option>')+'</select>'+
   '<div class="buttonrow"><button type="button" class="smallbtn solid" data-school-packet="individual" '+(packetClasses.length?'':'disabled')+'>Imprimir ficha individual do estudante</button>'+
   '<button type="button" class="smallbtn" data-school-packet="correction" '+(packetClasses.length?'':'disabled')+'>Imprimir todas as fichas de correção da turma</button>'+
-  '<button type="button" class="smallbtn" data-school-packet="full" '+(packetClasses.length?'':'disabled')+'>Imprimir avaliação completa da turma</button></div>'+
-  '<div class="buttonrow"><button type="button" class="smallbtn" data-test-x="1">Imprimir ficha fictícia de conferência A4</button></div>'+
+  '<button type="button" class="smallbtn" data-school-packet="activities" '+(packetClasses.length?'':'disabled')+'>Imprimir provas de Português + Matemática da turma (sem ficha OMR)</button></div>'+
+  '<p class="intro-note"><strong>Provas da turma:</strong> gera Português e Matemática juntos, duas páginas por estudante, sem ficha OMR. Inclui todos os estudantes confirmados da turma, mesmo os já avaliados.</p>'+'
+   <div class="buttonrow"><button type="button" class="smallbtn" data-test-x="1">Imprimir ficha fictícia de conferência A4</button></div>'+
   '<p class="intro-note">Teste de impressão sem matrícula real. Confira QR, quatro marcos de alinhamento e os campos M1 a M7; não envie esta ficha para resultados.</p>'+
   '<p class="intro-note"><strong>Modelo único OMR V2:</strong> nome, turma e QR individual já impressos. Pinte o quadradinho, digitalize em PDF ou foto e confira o resultado. Impressão A4, escala real (100%).</p>'+
-  '<label style="display:flex;align-items:center;gap:8px;margin:14px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked> Excluir estudantes que já têm avaliação oficial</label>'+
+  '<label style="display:flex;align-items:center;gap:8px;margin:14px 0"><input id="skipPublishedSchoolPacket" type="checkbox" checked> Excluir estudantes que já têm avaliação oficial (somente fichas de correção)</label>'+
   '</div>':'';
  const cycles=d.cycles.map(c=>`<tr><td>${clean(c.title)}</td><td>${chip(c.status)}</td><td>${mode==='demo'?'Demonstração':'Institucional'}</td></tr>`).join('');
 
@@ -438,7 +439,7 @@ function updatePacketStudents(){
 }
 function printSchoolReadyPacket(kind){
  if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
- if(!['individual','correction','full'].includes(kind))return;
+ if(!['individual','correction','activities'].includes(kind))return;
  const classId=$('schoolPacketClassSelect')?.value||'';
  const klass=loaded.classrooms.find(c=>c.id===classId);
  const students=loaded.students.filter(s=>s.classroom_id===classId&&s.active&&/^SON-26-[A-F0-9]{12}$/.test(s.local_reference||''));
@@ -447,7 +448,7 @@ function printSchoolReadyPacket(kind){
   if(!window.LuminaFichas?.printSchoolPacket)throw new Error('Atualize a página para carregar o modelo OMR V2.');
   const published=new Set(loaded.results.map(r=>r.student_id));
   const onlyPending=$('skipPublishedSchoolPacket')?.checked!==false;
-  const eligible=onlyPending?students.filter(s=>!published.has(s.id)):students;
+  const eligible=kind==='activities'?students:(onlyPending?students.filter(s=>!published.has(s.id)):students);
   if(!eligible.length){window.alert('Nenhum estudante elegível nesta turma. Desmarque o filtro para reimprimir.');return;}
   let chosen=eligible;
   if(kind==='individual'){
@@ -456,13 +457,13 @@ function printSchoolReadyPacket(kind){
    if(!student){window.alert('Selecione o estudante correto para imprimir a ficha individual.');return;}
    chosen=[student];
   }
-  const pages=chosen.length*(kind==='full'?3:1);
+  const pages=chosen.length*(kind==='activities'?2:1);
   if(kind!=='individual'){
-   const label=kind==='full'?'avaliação completa':'fichas de correção';
+   const label=kind==='activities'?'provas de Língua Portuguesa e Matemática (sem fichas de correção)':'fichas de correção';
    if(!window.confirm('Preparar '+pages+' página(s) A4 de '+label+' para '+chosen.length+
     ' estudantes do '+klass.label+'? Faça a conferência dos resultados digitalizados antes de publicar os dados.'))return;
   }
-  const result=window.LuminaFichas.printSchoolPacket(chosen,klass,kind==='full'?'full':'correction');
+  const result=window.LuminaFichas.printSchoolPacket(chosen,klass,kind==='activities'?'activities':'correction');
   if(Number(result.students)!==chosen.length||Number(result.pages)!==pages)
     throw new Error('O total de folhas geradas não coincidiu com a turma.');
  }catch(error){
