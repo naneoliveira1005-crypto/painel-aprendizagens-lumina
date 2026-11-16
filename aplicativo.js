@@ -132,6 +132,57 @@ function learningMathChart(records,mathLabels){
   '<p class="chart-note">Os segmentos indicam quantidades, não notas. Os estudantes sem ficha publicada não entram no gráfico.</p></div>';
 }
 
+
+let correctionFeedback='';
+function resultCorrectionEditor(r,H,L,T1,T2,math){
+ if(mode!=='live'||role!=='pedagogical_admin'||!r.id)return '';
+ const a=r.answers||{};
+ const options=(obj,key)=>Object.entries(obj).map(([v,label])=>'<option value="'+clean(v)+'"'+(a[key]===v?' selected':'')+'>'+clean(label)+'</option>').join('');
+ const select=(key,label,values)=>'<label style="display:block">'+clean(label)+'<select name="'+key+'" required style="display:block;width:100%">'+options(values,key)+'</select></label>';
+ let fields=select('H','Hipótese de escrita',Object.fromEntries(H.map((v,i)=>['H'+(i+1),v])))+select('T1','Texto de memória',T1)+select('T2','Texto narrativo',T2);
+ math.forEach((name,i)=>{let k='M'+(i+1);fields+=select(k,k+' — '+name,{[k+'_A']:'A — Autonomia',[k+'_P']:'P — Parcial/apoio',[k+'_N']:'N — Não demonstrou',[k+'_NO']:'NO — Não observado'});});
+ const checks=Object.entries(L).map(([v,label])=>'<label style="display:flex;gap:8px;align-items:center"><input name="reading" type="checkbox" value="'+v+'"'+(Array.isArray(a.L)&&a.L.includes(v)?' checked':'')+'>'+clean(label)+'</label>').join('');
+ return '<details style="padding:12px;margin-top:14px;border:1px solid #ccded4;border-radius:10px;background:#f7fbf8"><summary style="cursor:pointer;font-weight:bold">Corrigir avaliação publicada — coordenação</summary>'+
+ '<form data-correct-official="'+clean(r.id)+'"><p>Confira com a ficha original. A versão anterior será preservada no histórico.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:12px">'+fields+'</div>'+
+ '<fieldset style="margin:14px 0;border:1px solid #ccded4"><legend>Habilidades de leitura</legend><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:7px">'+checks+'</div></fieldset>'+
+ '<label>Justificativa obrigatória<textarea name="reason" required minlength="10" maxlength="500" rows="3" style="display:block;width:100%;box-sizing:border-box"></textarea></label>'+
+ '<button class="smallbtn solid" type="submit" style="margin-top:12px">Salvar correção com histórico</button></form></details>';
+}
+async function saveResultCorrection(form){
+ if(mode!=='live'||role!=='pedagogical_admin'||!profile||!api)return;
+ const id=form.dataset.correctOfficial,r=loaded.results.find(v=>v.id===id);
+ const student=loaded.students.find(v=>v.id===r?.student_id&&v.active);
+ if(!r||!student||!r.updated_at){window.alert('Atualize o painel antes de corrigir.');return;}
+ const value=k=>form.elements.namedItem(k)?.value||'';
+ const next={...r.answers,H:value('H'),T1:value('T1'),T2:value('T2'),L:[...form.querySelectorAll('input[name="reading"]:checked')].map(v=>v.value)};
+ for(let i=1;i<=7;i++)next['M'+i]=value('M'+i);
+ const reason=value('reason').trim();
+ const valid=/^H[1-5]$/.test(next.H)&&/^T1[012]$/.test(next.T1)&&/^T2[012]$/.test(next.T2)&&
+ next.L.every(v=>/^L[1-7]$/.test(v))&&new Set(next.L).size===next.L.length&&
+ Array.from({length:7},(_,i)=>'M'+(i+1)).every(k=>['A','P','N','NO'].some(v=>next[k]===k+'_'+v));
+ if(!valid||reason.length<10){window.alert('Revise os campos e informe o motivo com ao menos 10 caracteres.');return;}
+ const old={...r.answers,L:Array.isArray(r.answers.L)?r.answers.L:[]};
+ if(JSON.stringify(Object.entries(next).sort())===JSON.stringify(Object.entries(old).sort())){
+  window.alert('Nenhuma resposta foi alterada.');return;
+ }
+ if(!window.confirm('Confirmar correção OFICIAL de '+student.display_name+'? O histórico será preservado.'))return;
+ const btn=form.querySelector('button[type="submit"]'),owner=profile.user_id;
+ btn.disabled=true;btn.textContent='Salvando...';
+ try{
+  const {data:auth,error:authErr}=await api.auth.getUser();
+  if(authErr||auth?.user?.id!==owner)throw Error('Sessão institucional inválida.');
+  const {data,error}=await api.from('assessment_results').update({answers:next,change_reason:reason})
+   .eq('id',id).eq('updated_at',r.updated_at).select('id,updated_at');
+  if(error)throw error;
+  if(!Array.isArray(data)||data.length!==1)throw Error('Outra sessão alterou este registro ou não houve confirmação. Atualize antes de repetir.');
+  correctionFeedback='Correção de '+student.display_name+' registrada. Os indicadores foram atualizados.';
+  await refreshLive();
+ }catch(e){
+  window.alert('Correção não confirmada: '+(e?.message||'erro desconhecido'));
+  btn.disabled=false;btn.textContent='Salvar correção com histórico';
+ }
+}
+
 function officialResultsDashboard(d){
  if(mode==='demo')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>Disponível apenas para usuários autorizados, a partir de resultados oficiais.</p></div>';
  if(role==='director')return '<div class="card"><h2>Panorama das aprendizagens</h2><p>O acesso da direção não exibe dados individuais nesta etapa. Indicadores agregados poderão ser disponibilizados após a configuração específica desse perfil.</p></div>';
@@ -195,7 +246,7 @@ function officialResultsDashboard(d){
        '<tr><th>Habilidades de leitura</th><td>'+clean(reading||'Nenhuma habilidade marcada')+'</td></tr>'+
        '<tr><th>Leitura de texto de memória</th><td>'+clean(memories[a.T1]||'A conferir')+'</td></tr>'+
        '<tr><th>Leitura de texto narrativo</th><td>'+clean(narratives[a.T2]||'A conferir')+'</td></tr>'+
-       indicator+'</tbody></table></div></details>';
+       indicator+'</tbody></table></div>'+resultCorrectionEditor(r,hLabels,readValues,memories,narratives,mathLabels)+'</details>';
     }).join('');
   body='<div class="twocol"><article class="card"><h2>Hipóteses de escrita</h2>'+
    '<p>Quantidade de estudantes entre as '+n+' avaliações publicadas.</p>'+
@@ -209,7 +260,7 @@ function officialResultsDashboard(d){
    readingChart+'</div>'+
    '<div class="card"><h2>Matemática — indicadores M1 a M7</h2><p>Quantidade de estudantes por situação, considerando somente as '+n+' avaliações publicadas. A: resposta adequada com autonomia; P: desempenho parcial ou com ajuda; N: não demonstrou na atividade; NO: não observado.</p>'+
    mathChart+'<hr class="chart-divider"/><div class="tablewrap"><table><thead><tr><th>Indicador</th><th>A · Autonomia</th><th>P · Parcial/apoio</th><th>N · Não demonstrou</th><th>NO · Não observado</th></tr></thead><tbody>'+math+'</tbody></table></div></div>'+
-   '<div class="card"><h2>Registros individuais da turma</h2><p>Abra um estudante para consultar os conhecimentos e habilidades registrados. Visível somente no acesso autorizado.</p>'+students+'</div>';
+   '<div class="card"><h2>Registros individuais da turma</h2><p>Abra um estudante para consultar os conhecimentos e habilidades registrados. Visível somente no acesso autorizado.</p>'+(correctionFeedback&&role==='pedagogical_admin'?notice(clean(correctionFeedback),'info'):'')+students+'</div>';
  }
  return '<div class="card"><h2>Painel de resultados por turma</h2>'+
   '<p><strong>Somente avaliações oficialmente publicadas.</strong> Os dados acompanham os lançamentos e são separados por turma.</p>'+
@@ -941,7 +992,7 @@ async function refreshLive(options={}){
    get('classrooms','id,label,shift,school_year'),
    get('assessment_cycles','id,title,status,school_year'),
    profile.role==='director'?Promise.resolve([]):get('students','id,display_name,classroom_id,active,local_reference','none'),
-   profile.role==='director'?Promise.resolve([]):get('assessment_results','student_id,cycle_id,answers','none'),
+   profile.role==='director'?Promise.resolve([]):get('assessment_results','id,student_id,cycle_id,answers,updated_at','none'),
    profile.role==='pedagogical_admin'?get('staff_directory','id,full_name,planned_role,email,status'):Promise.resolve([]),
    profile.role==='pedagogical_admin'?get('staff_directory_classrooms','staff_id,classroom_id','none'):Promise.resolve([]),
    ['pedagogical_admin','teacher'].includes(profile.role)?get('import_batches','id,classroom_id,expected_rows,status,source_filename'):Promise.resolve([]),
@@ -1057,6 +1108,7 @@ function bind(){
  $('btnRefresh').addEventListener('click',async()=>{if(mode==='live')await refreshLive();else render()});
  $('demoRole').addEventListener('change',()=>{if(mode==='demo'){role=$('demoRole').value;render()}});
  document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>{currentPage=btn.dataset.page;render();window.scrollTo({top:0,behavior:'instant'});}));
+ $('content').addEventListener('submit',e=>{const f=e.target.closest('[data-correct-official]');if(f){e.preventDefault();void saveResultCorrection(f);}});
  $('content').addEventListener('click',e=>{const publish=e.target.closest('[data-publish-reviewed-batch]');if(publish){void publishReviewedBatch(publish.dataset.publishReviewedBatch,publish);return;}const approval=e.target.closest('[data-review-ready]');if(approval){void confirmImportedReview(approval.dataset.reviewReady,approval);return;}const testX=e.target.closest('[data-test-x]');if(testX){try{window.LuminaFichas.printTestSheet();}catch(err){window.alert(err.message||'Não foi possível abrir o teste.');}return;}const guide=e.target.closest('[data-guide-class]');if(guide&&mode==='live'&&role==='pedagogical_admin'){const klass=loaded.classrooms.find(c=>c.id===guide.dataset.guideClass);if(klass){try{window.LuminaFichas.printGuide(Number(klass.label[0]));}catch(err){rosterReviewMessage='Não foi possível gerar o roteiro. Atualize a página.';render();}}return;}const schoolPacket=e.target.closest('[data-school-packet]');if(schoolPacket){printSchoolReadyPacket(schoolPacket.dataset.schoolPacket);return;}const classroomReview=e.target.closest('[data-verify-class]');if(classroomReview){void verifyRosterClass(classroomReview.dataset.verifyClass,classroomReview);return;}const review=e.target.closest('[data-verify-student]');if(review){void updateStudentReview(review.dataset.verifyStudent,review.dataset.nextActive==='true',review);return;}const btn=e.target.closest('[data-jump]');if(btn){currentPage=btn.dataset.jump;render();window.scrollTo({top:0,behavior:'instant'});}});
 }
 (async()=>{
